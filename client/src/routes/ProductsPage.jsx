@@ -1,64 +1,57 @@
-import { useMemo, useState } from 'react';
-import { useDataStore } from '../store/dataStore.js';
-import { Card } from '../components/ui/Card.jsx';
-import Input from '../components/ui/Input.jsx';
-import Button from '../components/ui/Button.jsx';
-import { Table } from '../components/ui/Table.jsx';
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card } from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import axios from "../lib/axios";
 
 export default function ProductsPage() {
-  const { products, productTypes, addProduct, removeProduct } = useDataStore();
-  const [q, setQ] = useState('');
+  const [products, setProducts] = useState([]);
 
-  const rows = useMemo(() => {
-    const typeById = Object.fromEntries(productTypes.map((t) => [t.id, t.name]));
-    return products
-      .filter((p) => (q ? (p.name + p.sku).toLowerCase().includes(q.toLowerCase()) : true))
-      .map((p) => ({ ...p, typeName: typeById[p.typeId] || '-' }));
-  }, [products, productTypes, q]);
+  useEffect(() => {
+    // ดึงข้อมูลจาก API (หรือ mock data)
+    axios.get("/products").then((res) => setProducts(res.data));
+  }, []);
 
   return (
-    <div className="grid gap-4">
-      <Card>
-        <div className="flex flex-col md:flex-row md:items-center gap-3">
-          <div className="grow">
-            <Input
-              placeholder="ค้นหาชื่อ/รหัสสินค้า"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <Button
-            onClick={() =>
-              addProduct({ sku: 'NEW-001', name: 'สินค้าใหม่', basePrice: 10, typeId: 1 })
-            }
-          >
-            เพิ่มสินค้า (mock)
-          </Button>
-        </div>
-      </Card>
+    <div className="p-6">
+      <h1 className="text-xl font-semibold mb-4">รายการสินค้า</h1>
 
       <Card>
-        <Table
-          columns={[
-            { key: 'sku', header: 'SKU' },
-            { key: 'name', header: 'ชื่อสินค้า' },
-            { key: 'typeName', header: 'ประเภท' },
-            { key: 'basePrice', header: 'ราคา (฿)' },
-            {
-              key: 'actions',
-              header: '',
-              render: (_, r) => (
-                <div className="flex justify-end">
-                  <button className="btn btn-outline text-xs" onClick={() => removeProduct(r.id)}>
-                    ลบ
-                  </button>
-                </div>
-              ),
-            },
-          ]}
-          data={rows}
-        />
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100 text-left">
+              <th className="p-2 border">Barcode</th>
+              <th className="p-2 border">ชื่อสินค้า</th>
+              <th className="p-2 border">ประเภทสินค้า</th>
+              <th className="p-2 border text-right">ราคาขาย</th>
+              <th className="p-2 border text-right">ราคาซื้อ</th>
+              <th className="p-2 border text-center">เครื่องมือ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="p-2 border">{p.barcode}</td>
+                <td className="p-2 border">{p.name}</td>
+                <td className="p-2 border">{p.category?.name}</td>
+                <td className="p-2 border text-right">{p.salePrice?.toLocaleString()} ฿</td>
+                <td className="p-2 border text-right">{p.costPrice?.toLocaleString()} ฿</td>
+                <td className="p-2 border text-center">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(p.id)}>
+                    แก้ไข
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
     </div>
   );
+
+  function handleEdit(id) {
+    // TODO: เปิด modal หรือไปหน้าแก้ไข
+    console.log("Edit product:", id);
+  }
 }
