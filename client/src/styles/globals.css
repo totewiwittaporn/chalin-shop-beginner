@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind utilities;
+
+
+/* =========================
+THEME: Peach Cream (Light)
+========================= */
+:root {
+/* Base */
+--color-bg: #fff5ef; /* peach/cream */
+--color-surface: #ffe7d7; /* card */
+--color-border: #f4c6a8; /* border */
+--color-text: #3b2f2a; /* deep brown */
+--color-muted: #8f6f60; /* secondary text */
+
+
+/* Brand */
+--color-primary: #f2a97b; /* peach */
+--color-primary-strong: #ea8e58; /* hover */
+--color-primary-fg: #3b2f2a; /* text on button */
+
+
+--color-accent: #ffca9f; /* soft highlight */
+--radius-xl: 20px;
+--radius-2xl: 26px;
+
+
+--shadow-soft: 0 10px 30px rgba(234, 142, 88, 0.15);
+--shadow-inner: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+
+/* Dark variant: add class="theme-peach-dark" on <html> */
+.theme-peach-dark {
+--color-bg: #2a1f1a;
+--color-surface: #3a2922;
+--color-border: #6a4c3f;
+--color-text: #f9efe8;
+--color-muted: #e3c6b8;
+
+
+--color-primary: #f2a97b;
+--color-primary-strong: #ff9a64;
+--color-primary-fg: #2a1f1a;
+
+
+--color-accent: #7a513e;
+--shadow-soft: 0 10px 30px rgba(242, 169, 123, 0.18);
+}
+
+
+html, body {
+background: var(--color-bg);
+color: var(--color-text);
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans,
+'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+
+
+.container-app { @apply max-w-6xl mx-auto px-4; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-2xl); box-shadow: var(--shadow-soft); }
+
+
+.btn { @apply inline-flex items-center justify-center font-medium transition; border-radius: var(--radius-xl); padding: 12px 18px; box-shadow: var(--shadow-inner), var(--shadow-soft); }
+.btn-primary { background: var(--color-primary); color: var(--color-primary-fg); }
+.btn-primary:hover { background: var(--color-primary-strong); }
+.btn-outline { background: transparent; border: 1px solid var(--color-border); color: var(--color-text); }
+.btn-outline:hover { background: var(--color-accent); }
+
+
+.navbar { backdrop-filter: blur(8px); background: color-mix(in srgb, var(--color-surface) 70%, transparent); border-bottom: 1px solid var(--color-border); }
+.h-title { @apply text-xl font-semibold; }
+.text-muted { color: var(--color-muted); }
+
+
+/* Scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--color-primary) var(--color-surface); }
+*::-webkit-scrollbar { width: 10px; }
+*::-webkit-scrollbar-track { background: var(--color-surface); border-radius: 999px; }
+*::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 999px; border: 2px solid var(--color-surface); }
