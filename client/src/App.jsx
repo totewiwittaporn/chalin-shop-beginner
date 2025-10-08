@@ -18,6 +18,7 @@ import SettingsPage from './routes/SettingsPage.jsx';
 import ProfilePage from './routes/ProfilePage.jsx';
 import NotFoundPage from './routes/NotFoundPage.jsx';
 import UsersPage from './routes/UsersPage.jsx';
+import CountInventoryPage from './routes/CountInventoryPage.jsx';
 
 // ----- Wrapper ทางลัดโหมด Consignment -----
 // ใช้คอมโพเนนต์ InventoryPage ตัวเดิม แต่บังคับให้เริ่มที่ scope = "consignment"
@@ -46,6 +47,7 @@ const router = createBrowserRouter(
         { path: 'branches', element: <BranchesPage /> },
         { path: 'consignment-shops', element: <ConsignmentShopsPage /> },
         { path: 'inventory', element: <InventoryPage /> },
+        { path: 'inventory/count', element: <CountInventoryPage /> },
 
         // Alias สำหรับโหมดฝากขาย
         { path: 'consignment/inventory', element: <InventoryConsignmentWrapper /> },
@@ -56,6 +58,8 @@ const router = createBrowserRouter(
         { path: 'transfers', element: <TransfersPage /> },
         { path: 'sales', element: <SalesPage /> },
         { path: 'quotes', element: <QuotesPage /> },
+
+        // รายงาน
 
         // ระบบ
         { path: 'settings', element: <SettingsPage /> },
