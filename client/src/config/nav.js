@@ -34,7 +34,7 @@ export const NAV_BY_ROLE = {
       { label: 'Purchases', to: '/purchases', icon: 'Cart' },    // รับสินค้า
     ]},
     { section: 'ขาย', items: [
-      { label: 'Sales', to: '/sales', icon: 'Receipt' },
+      { label: 'Sales', to: '/branches/sales', icon: 'Receipt' },
     ]},
   ],
 

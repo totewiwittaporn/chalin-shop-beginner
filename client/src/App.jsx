@@ -10,19 +10,25 @@ import ConsignmentCategoriesPage from './routes/ConsignmentCategoriesPage.jsx';
 import BranchesPage from './routes/BranchesPage.jsx';
 import ConsignmentShopsPage from './routes/ConsignmentShopsPage.jsx';
 import InventoryPage from './routes/InventoryPage.jsx';
+import CountInventoryPage from './routes/CountInventoryPage.jsx';
 import PurchasesPage from './routes/PurchasesPage.jsx';
-import SalesPage from './routes/SalesPage.jsx';
 import QuotesPage from './routes/QuotesPage.jsx';
 import SettingsPage from './routes/SettingsPage.jsx';
 import ProfilePage from './routes/ProfilePage.jsx';
 import NotFoundPage from './routes/NotFoundPage.jsx';
 import UsersPage from './routes/UsersPage.jsx';
-import CountInventoryPage from './routes/CountInventoryPage.jsx';
 import TemplatesSettingsPage from './routes/TemplatesSettingsPage.jsx';
 import BranchDeliveryPage from './routes/BranchDeliveryPage.jsx';
 import BranchSalesPage from './routes/BranchSalesPage.jsx';
 import ConsignmentDeliveryPage from './routes/ConsignmentDeliveryPage.jsx';
 import ConsignmentSalesPage from './routes/ConsignmentSalesPage.jsx';
+import DevSeeder from './routes/DevSeeder.jsx';
+import DocsHome from './routes/docs/DocsHome.jsx';
+import DeliveryDocs from './routes/docs/DeliveryDocs.jsx';
+import InvoiceDocs from './routes/docs/InvoiceDocs.jsx';
+import ReceiptDocs from './routes/docs/ReceiptDocs.jsx';
+import QuoteDocs from './routes/docs/QuoteDocs.jsx';
+import DocPreview from './routes/docs/DocPreview.jsx';
 
 // ----- Wrapper ทางลัดโหมด Consignment -----
 // ใช้คอมโพเนนต์ InventoryPage ตัวเดิม แต่บังคับให้เริ่มที่ scope = "consignment"
@@ -55,7 +61,6 @@ const router = createBrowserRouter(
 
         // Alias สำหรับโหมดฝากขาย
         { path: 'consignment/inventory', element: <InventoryConsignmentWrapper /> },
-        { path: 'consignment/sales', element: <SalesConsignmentWrapper /> },
 
         // รายการเอกสาร
         { path: 'purchases', element: <PurchasesPage /> },
@@ -71,6 +76,19 @@ const router = createBrowserRouter(
         { path: 'settings', element: <SettingsPage /> },
         { path: 'settings/templates', element: <TemplatesSettingsPage /> },
         { path: 'profile', element: <ProfilePage /> },
+        { path: 'dev/seeder', element: <DevSeeder /> }, // ← ชั่วคราวเพื่อโหลด mock
+      ],
+    },
+    {
+      path: 'docs',
+      element: <DocsHome />,
+      children: [
+        { index: true, element: <div className="p-6">เลือกประเภทเอกสารจากเมนูด้านซ้าย</div> },
+        { path: 'deliveries', element: <DeliveryDocs /> },
+        { path: 'invoices', element: <InvoiceDocs /> },
+        { path: 'receipts', element: <ReceiptDocs /> },
+        { path: 'quotes', element: <QuoteDocs /> },
+        { path: ':kind/:id', element: <DocPreview /> }, // kind: delivery|invoice|receipt|quote
       ],
     },
   ],
