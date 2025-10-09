@@ -5,20 +5,23 @@ export const NAV_BY_ROLE = {
       { label: 'Profile', to: '/profile' },
     ] },
     { section: 'คลังสินค้า', items: [
-      { label: 'Product Types', to: '/product-types', icon: 'Tags' },
       { label: 'Products', to: '/products', icon: 'Package' },
+      { label: 'Product Consign', to: '/consignment/categories', icon: 'Tags' },
       { label: 'Branches', to: '/branches', icon: 'Building' },
       { label: 'Consignment Shops', to: '/consignment-shops', icon: 'Store' },
       { label: 'Inventory', to: '/inventory', icon: 'Boxes' },
     ]},
     { section: 'รายการ', items: [
       { label: 'Purchases', to: '/purchases', icon: 'Cart' },
-      { label: 'Transfers', to: '/transfers', icon: 'Swap' },
-      { label: 'Sales', to: '/sales', icon: 'Receipt' },
+      { label: 'Delivery Braches', to: '/branches/delivery', icon: 'Swap' },
+      { label: 'Delivery Consignments', to: '/consignment/delivery', icon: 'Swap' },
+      { label: 'POS Braches', to: '/branches/sales', icon: 'Receipt' },
+      { label: 'POS Consignments', to: '/consignment/sales', icon: 'Receipt' },
       { label: 'Quotes', to: '/quotes', icon: 'FileText' },
     ]},
     { section: 'ระบบ', items: [
       { label: 'Settings', to: '/settings', icon: 'Settings' },
+      { label: 'Settings', to: '/settings/templates', icon: 'Settings' },
       { label: 'Users', to: '/users', icon: 'Users' } // ตามสรุปของคุณ
     ]},
   ],

@@ -6,12 +6,11 @@ import RootLayout from './routes/RootLayout.jsx';
 // หน้าใช้งานหลัก
 import DashboardPage from './routes/DashboardPage.jsx';
 import ProductsPage from './routes/ProductsPage.jsx';
-import ProductTypesPage from './routes/ProductTypesPage.jsx';
+import ConsignmentCategoriesPage from './routes/ConsignmentCategoriesPage.jsx';
 import BranchesPage from './routes/BranchesPage.jsx';
 import ConsignmentShopsPage from './routes/ConsignmentShopsPage.jsx';
 import InventoryPage from './routes/InventoryPage.jsx';
 import PurchasesPage from './routes/PurchasesPage.jsx';
-import TransfersPage from './routes/TransfersPage.jsx';
 import SalesPage from './routes/SalesPage.jsx';
 import QuotesPage from './routes/QuotesPage.jsx';
 import SettingsPage from './routes/SettingsPage.jsx';
@@ -19,6 +18,11 @@ import ProfilePage from './routes/ProfilePage.jsx';
 import NotFoundPage from './routes/NotFoundPage.jsx';
 import UsersPage from './routes/UsersPage.jsx';
 import CountInventoryPage from './routes/CountInventoryPage.jsx';
+import TemplatesSettingsPage from './routes/TemplatesSettingsPage.jsx';
+import BranchDeliveryPage from './routes/BranchDeliveryPage.jsx';
+import BranchSalesPage from './routes/BranchSalesPage.jsx';
+import ConsignmentDeliveryPage from './routes/ConsignmentDeliveryPage.jsx';
+import ConsignmentSalesPage from './routes/ConsignmentSalesPage.jsx';
 
 // ----- Wrapper ทางลัดโหมด Consignment -----
 // ใช้คอมโพเนนต์ InventoryPage ตัวเดิม แต่บังคับให้เริ่มที่ scope = "consignment"
@@ -42,8 +46,8 @@ const router = createBrowserRouter(
         { path: 'users', element: <UsersPage /> },
 
         // คลังสินค้า
-        { path: 'product-types', element: <ProductTypesPage /> },
         { path: 'products', element: <ProductsPage /> },
+        { path: 'consignment/categories', element: <ConsignmentCategoriesPage /> },
         { path: 'branches', element: <BranchesPage /> },
         { path: 'consignment-shops', element: <ConsignmentShopsPage /> },
         { path: 'inventory', element: <InventoryPage /> },
@@ -55,14 +59,17 @@ const router = createBrowserRouter(
 
         // รายการเอกสาร
         { path: 'purchases', element: <PurchasesPage /> },
-        { path: 'transfers', element: <TransfersPage /> },
-        { path: 'sales', element: <SalesPage /> },
+        { path: 'branches/delivery', element: <BranchDeliveryPage /> },
+        { path: 'branches/sales', element: <BranchSalesPage /> },
+        { path: 'consignment/delivery', element: <ConsignmentDeliveryPage /> },
+        { path: 'consignment/sales', element: <ConsignmentSalesPage /> },
         { path: 'quotes', element: <QuotesPage /> },
 
         // รายงาน
 
         // ระบบ
         { path: 'settings', element: <SettingsPage /> },
+        { path: 'settings/templates', element: <TemplatesSettingsPage /> },
         { path: 'profile', element: <ProfilePage /> },
       ],
     },
