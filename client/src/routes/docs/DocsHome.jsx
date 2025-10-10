@@ -1,3 +1,4 @@
+// client/src/routes/docs/DocsHome.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 
 export default function DocsHome(){
@@ -9,6 +10,7 @@ export default function DocsHome(){
         <div className="text-sm opacity-70 mb-2">หมวดเอกสาร</div>
         <nav className="grid gap-1">
           <NavLink className={active} to="deliveries">ใบส่งสินค้า</NavLink>
+          <NavLink className={active} to="consales">ยอดขายฝากขาย</NavLink>
           <NavLink className={active} to="invoices">ใบวางบิล</NavLink>
           <NavLink className={active} to="receipts">ใบเสร็จรับเงิน</NavLink>
           <NavLink className={active} to="quotes">ใบเสนอราคา</NavLink>

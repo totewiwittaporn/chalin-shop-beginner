@@ -1,3 +1,4 @@
+// client/src/routes/docs/DocPreview.jsx
 import { useParams } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 
@@ -13,7 +14,7 @@ export default function DocPreview(){
   const { kind, id } = useParams();
   const {
     products=[], quotes=[], invoices=[], receipts=[], consignmentDeliveries=[],
-    consignmentShops=[], branches=[]
+    consignmentSales=[], consignmentShops=[], branches=[]
   } = useDataStore();
 
   const byId = (arr) => Object.fromEntries(arr.map(x=>[String(x.id), x]));
@@ -26,13 +27,13 @@ export default function DocPreview(){
   if (kind === 'invoice')  { doc = invoices.find(d=> String(d.id)===id);            title='ใบวางบิล'; }
   if (kind === 'receipt')  { doc = receipts.find(d=> String(d.id)===id);            title='ใบเสร็จรับเงิน'; }
   if (kind === 'quote')    { doc = quotes.find(d=> String(d.id)===id);              title='ใบเสนอราคา'; }
+  if (kind === 'consale')  { doc = consignmentSales.find(d=> String(d.id)===id);    title='สรุปยอดขายฝากขาย'; }
 
   if (!doc) return <div className="p-6">ไม่พบเอกสาร</div>;
 
   const partnerName = doc.shopId ? mapShops[String(doc.shopId)]?.nameInternal
                      : doc.branchId ? mapBranches[String(doc.branchId)]?.name
                      : '-';
-
   const lines = doc.lines || [];
 
   return (
@@ -63,24 +64,24 @@ export default function DocPreview(){
               { (kind!=='delivery') && <th className="text-right">รวม</th> }
             </tr>
           </thead>
-          <tbody>
-            {lines.map((l, i) => {
-              const p = mapProducts[String(l.productId)];
-              const name = l.name || p?.name || `#${l.productId}`;
-              const qty  = l.qty ?? 1;
-              const price = l.unitPrice ?? l.priceOffer ?? p?.salePrice ?? 0;
-              const amount = l.amount ?? (price * qty);
-              return (
-                <tr key={i} className="border-b border-gray-100">
-                  <td className="py-2">{i+1}</td>
-                  <td>{name}</td>
-                  <td className="text-right">{qty}</td>
-                  { (kind!=='delivery') && <td className="text-right">{price.toLocaleString()}</td> }
-                  { (kind!=='delivery') && <td className="text-right">{amount.toLocaleString()}</td> }
-                </tr>
-              );
-            })}
-          </tbody>
+        <tbody>
+          {lines.map((l, i) => {
+            const p = mapProducts[String(l.productId)];
+            const name = l.name || p?.name || `#${l.productId}`;
+            const qty  = l.qty ?? 1;
+            const price = l.unitPrice ?? l.priceOffer ?? p?.salePrice ?? 0;
+            const amount = l.amount ?? (price * qty);
+            return (
+              <tr key={i} className="border-b border-gray-100">
+                <td className="py-2">{i+1}</td>
+                <td>{name}</td>
+                <td className="text-right">{qty}</td>
+                { (kind!=='delivery') && <td className="text-right">{price.toLocaleString()}</td> }
+                { (kind!=='delivery') && <td className="text-right">{amount.toLocaleString()}</td> }
+              </tr>
+            );
+          })}
+        </tbody>
         </table>
 
         <div className="mt-6 text-right space-y-1">

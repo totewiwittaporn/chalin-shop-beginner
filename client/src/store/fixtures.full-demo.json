@@ -1,15 +1,57 @@
 {
   "...": "...",
   "consignmentDeliveries": [
-    { "id": 901, "docNo": "CD-2510-001", "type": "CONSIGNMENT_DELIVERY", "date": "2025-10-01", "shopId": 301,
-      "lines": [ { "productId": 101, "qty": 5 }, { "productId": 108, "qty": 4 } ],
+    {
+      "id": 901,
+      "docNo": "CD-2510-001",
+      "type": "CONSIGNMENT_DELIVERY",
+      "date": "2025-10-01",
+      "shopId": 301,
+      "lines": [
+        { "productId": 101, "qty": 5 },
+        { "productId": 108, "qty": 4 }
+      ],
+      "totals": { "net": 0, "com": 0 }
+    },
+    {
+      "id": 902,
+      "docNo": "CD-2510-002",
+      "type": "CONSIGNMENT_DELIVERY",
+      "date": "2025-10-04",
+      "shopId": 302,
+      "lines": [
+        { "productId": 103, "qty": 3 },
+        { "productId": 104, "qty": 6 }
+      ],
       "totals": { "net": 0, "com": 0 }
     }
   ],
   "consignmentSales": [
-    { "id": 951, "docNo": "CS-2510-001", "type": "CONSIGNMENT_SALES", "date": "2025-10-05", "shopId": 301,
-      "lines": [ { "productId": 101, "qty": 2 }, { "productId": 108, "qty": 1 } ],
-      "totals": { "net": 1200, "com": 400 }, "status": "POSTED"
+    {
+      "id": 951,
+      "docNo": "CS-2510-001",
+      "type": "CONSIGNMENT_SALES",
+      "date": "2025-10-05",
+      "shopId": 301,
+      "lines": [
+        { "productId": 101, "qty": 2 },
+        { "productId": 108, "qty": 1 }
+      ],
+      "totals": { "net": 1200, "com": 400 },
+      "status": "POSTED"
+    },
+    {
+      "id": 952,
+      "docNo": "CS-2510-002",
+      "type": "CONSIGNMENT_SALES",
+      "date": "2025-10-07",
+      "shopId": 302,
+      "lines": [
+        { "productId": 103, "qty": 1 },
+        { "productId": 104, "qty": 2 }
+      ],
+      "totals": { "net": 950, "com": 250 },
+      "status": "POSTED"
     }
   ],
 
@@ -46,3 +88,4 @@
     }
   ]
 }
+

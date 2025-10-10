@@ -1,11 +1,11 @@
+// client/src/routes/docs/DeliveryDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 
 export default function DeliveryDocs(){
-  const { consignmentDeliveries = [], branches = [], consignmentShops = [] } = useDataStore();
+  const { consignmentDeliveries = [], consignmentShops = [], branches = [] } = useDataStore();
   const shopById = Object.fromEntries(consignmentShops.map(s=>[s.id, s.nameInternal]));
   const branchById = Object.fromEntries(branches.map(b=>[b.id, b.name]));
-
   return (
     <div className="grid gap-3">
       <h2 className="text-xl font-semibold">ใบส่งสินค้า</h2>
@@ -21,9 +21,10 @@ export default function DeliveryDocs(){
               <td>{d.date}</td>
               <td>{d.shopId ? shopById[d.shopId] : (d.branchId ? branchById[d.branchId] : '-')}</td>
               <td>{d.lines?.length || 0}</td>
-              <td><Link className="btn btn-outline btn-xs" to={`/docs/delivery/${d.id}`}>ดูเอกสาร</Link></td>
+              <td><Link className="btn btn-outline btn-xs" to={`/docs/delivery/${d.id}`}>ดู/พิมพ์</Link></td>
             </tr>
           ))}
+          {consignmentDeliveries.length===0 && <tr><td colSpan={5} className="py-8 text-center opacity-60">ไม่มีข้อมูล</td></tr>}
           </tbody>
         </table>
       </div>

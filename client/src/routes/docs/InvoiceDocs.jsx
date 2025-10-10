@@ -1,3 +1,4 @@
+// client/src/routes/docs/InvoiceDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 
@@ -5,7 +6,6 @@ export default function InvoiceDocs(){
   const { invoices = [], consignmentShops = [], branches = [] } = useDataStore();
   const shopById = Object.fromEntries(consignmentShops.map(s=>[s.id, s.nameInternal]));
   const branchById = Object.fromEntries(branches.map(b=>[b.id, b.name]));
-
   return (
     <div className="grid gap-3">
       <h2 className="text-xl font-semibold">ใบวางบิล</h2>
@@ -22,9 +22,10 @@ export default function InvoiceDocs(){
               <td>{inv.shopId ? shopById[inv.shopId] : (inv.branchId ? branchById[inv.branchId] : '-')}</td>
               <td>{(inv.totals?.net ?? inv.totals?.gross ?? 0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
               <td>{inv.status || '-'}</td>
-              <td><Link className="btn btn-outline btn-xs" to={`/docs/invoice/${inv.id}`}>ดูเอกสาร</Link></td>
+              <td><Link className="btn btn-outline btn-xs" to={`/docs/invoice/${inv.id}`}>ดู/พิมพ์</Link></td>
             </tr>
           ))}
+          {invoices.length===0 && <tr><td colSpan={6} className="py-8 text-center opacity-60">ไม่มีข้อมูล</td></tr>}
           </tbody>
         </table>
       </div>

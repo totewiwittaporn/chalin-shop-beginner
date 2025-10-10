@@ -1,10 +1,10 @@
+// client/src/routes/docs/QuoteDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 
 export default function QuoteDocs(){
   const { quotes = [], prospects = [] } = useDataStore();
   const prospectById = Object.fromEntries(prospects.map(p=>[p.id, p.name]));
-
   return (
     <div className="grid gap-3">
       <h2 className="text-xl font-semibold">ใบเสนอราคา</h2>
@@ -22,9 +22,10 @@ export default function QuoteDocs(){
               <td>{q.mode}</td>
               <td>{(q.totals?.net ?? q.totals?.gross ?? 0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
               <td>{q.status}</td>
-              <td><Link className="btn btn-outline btn-xs" to={`/docs/quote/${q.id}`}>ดูเอกสาร</Link></td>
+              <td><Link className="btn btn-outline btn-xs" to={`/docs/quote/${q.id}`}>ดู/พิมพ์</Link></td>
             </tr>
           ))}
+          {quotes.length===0 && <tr><td colSpan={7} className="py-8 text-center opacity-60">ไม่มีข้อมูล</td></tr>}
           </tbody>
         </table>
       </div>
