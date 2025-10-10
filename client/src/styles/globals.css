@@ -87,3 +87,5 @@ html, body {
 @media (min-width: 768px) {
   .only-mobile { display: none; }
 }
+
+@import './print.css';

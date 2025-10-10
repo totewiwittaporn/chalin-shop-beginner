@@ -1,4 +1,4 @@
-// client/src/routes/docs/DocsHome.jsx
+// src/routes/docs/DocsHome.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 
 export default function DocsHome(){
@@ -16,7 +16,11 @@ export default function DocsHome(){
           <NavLink className={active} to="quotes">ใบเสนอราคา</NavLink>
         </nav>
       </aside>
-      <main><Outlet/></main>
+      <main className="min-w-0">
+        <div className="glass rounded-2xl p-4">
+          <Outlet/>
+        </div>
+      </main>
     </div>
   );
 }

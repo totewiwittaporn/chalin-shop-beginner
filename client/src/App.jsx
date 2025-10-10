@@ -26,6 +26,7 @@ import DevSeeder from './routes/DevSeeder.jsx';
 import DocsHome from './routes/docs/DocsHome.jsx';
 import DeliveryDocs from './routes/docs/DeliveryDocs.jsx';
 import InvoiceDocs from './routes/docs/InvoiceDocs.jsx';
+import ConsaleDocs from './routes/docs/ConsaleDocs.jsx';
 import ReceiptDocs from './routes/docs/ReceiptDocs.jsx';
 import QuoteDocs from './routes/docs/QuoteDocs.jsx';
 import DocPreview from './routes/docs/DocPreview.jsx';
@@ -85,6 +86,7 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <div className="p-6">เลือกประเภทเอกสารจากเมนูด้านซ้าย</div> },
         { path: 'deliveries', element: <DeliveryDocs /> },
+        { path: 'consales', element: <ConsaleDocs /> },
         { path: 'invoices', element: <InvoiceDocs /> },
         { path: 'receipts', element: <ReceiptDocs /> },
         { path: 'quotes', element: <QuoteDocs /> },
