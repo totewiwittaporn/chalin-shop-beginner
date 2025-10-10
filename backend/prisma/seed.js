@@ -7,7 +7,7 @@ async function main() {
   const mainBranch = await prisma.branch.upsert({
     where: { code: "MAIN" },
     update: {},
-    create: { code: "MAIN", name: "สาขาหลัก", address: "-" }
+    create: { code: "MAIN", name: "Chalin Shop", address: "-" }
   });
 
   await prisma.productType.upsert({
@@ -16,12 +16,12 @@ async function main() {
     create: { name: "เครื่องประดับ" }
   });
 
-  const adminPass = await bcrypt.hash("admin1234", 10);
+  const adminPass = await bcrypt.hash("Tg271260", 10);
   await prisma.user.upsert({
-    where: { email: "admin@chalin.local" },
+    where: { email: "admin@chalinshop.com" },
     update: {},
     create: {
-      email: "admin@chalin.local",
+      email: "admin@chalinshop.com",
       password: adminPass,
       name: "System Admin",
       role: Role.ADMIN,

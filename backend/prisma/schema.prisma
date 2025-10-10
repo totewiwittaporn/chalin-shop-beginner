@@ -19,7 +19,7 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(STAFF)
+  role      Role     @default(QUOTE_VIEWER)
   branchId  Int?
   branch    Branch?  @relation(fields: [branchId], references: [id])
   createdAt DateTime @default(now())
