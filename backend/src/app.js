@@ -6,13 +6,14 @@ import authRoutes from "./routes/auth.routes.js";
 import productTypesRoutes from "./routes/productTypes.routes.js";
 import branchesRoutes from "./routes/branches.routes.js";
 import { errorHandler } from "./middleware/error.js";
+import debugRoutes from "./routes/_debug.routes.js";
 
 const app = express();
 
 const allowed = (process.env.CORS_ORIGIN || "")
-  .split(",")
-  .map(s => s.trim())
-  .filter(Boolean);
+.split(",")
+.map(s => s.trim())
+.filter(Boolean);
 
 app.use(cors({
   origin: (origin, cb) => {
@@ -26,6 +27,7 @@ app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json());
 
+app.use("/api/_debug", debugRoutes);
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use("/api/auth", authRoutes);

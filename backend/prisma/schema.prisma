@@ -16,32 +16,45 @@ enum Role {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(QUOTE_VIEWER)
-  branchId  Int?
-  branch    Branch?  @relation(fields: [branchId], references: [id])
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  name     String
+  role     Role    @default(QUOTE_VIEWER)
+  branchId Int?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  // 🔁 back-relations (ใหม่)
+  transfersCreated       Transfer[]       @relation("TransferCreatedBy")
+  consignReceiptsCreated ConsignReceipt[] @relation("ConsignReceiptCreatedBy")
+  consignReturnsCreated  ConsignReturn[]  @relation("ConsignReturnCreatedBy")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Branch {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  name      String
-  address   String?
+  id                Int     @id @default(autoincrement())
+  code              String  @unique
+  name              String
+  address           String?
   commissionPercent Float?
-  users     User[]
+
+  users User[]
+
+  // 🔁 back-relations (ใหม่)
+  transfersFrom    Transfer[]      @relation("TransfersFromBranch")
+  consignReturnsIn ConsignReturn[] @relation("ReturnsToBranch")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model ProductType {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  products  Product[]
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -50,33 +63,44 @@ model Product {
   id            Int         @id @default(autoincrement())
   sku           String      @unique
   name          String
-  basePrice     Decimal     @db.Decimal(10,2)
+  basePrice     Decimal     @db.Decimal(10, 2)
   productTypeId Int
   productType   ProductType @relation(fields: [productTypeId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+
+  // 🔁 back-relations (ใหม่)
+  transferLines       TransferLine[]
+  consignReceiptLines ConsignReceiptLine[]
+  consignReturnLines  ConsignReturnLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
+//===================== CONSIGNMENT CORE =====================//
 
 enum TransferStatus {
   DRAFT
-  SENT        // โอนไปแล้ว รอร้านรับ
-  PARTIAL     // ร้านรับบางส่วน
-  RECEIVED    // ร้านรับครบ
+  SENT // โอนออกแล้ว รอร้านรับ
+  PARTIAL // ร้านรับบางส่วน
+  RECEIVED // ร้านรับครบ
   CANCELLED
 }
 
 model ConsignmentShop {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  name      String
-  address   String?
-  // อาจผูกกับ Branch เจ้าของได้ถ้าต้องการ
+  id      Int     @id @default(autoincrement())
+  code    String  @unique
+  name    String
+  address String?
+
+  // โอนเข้าร้าน
+  transfersTo Transfer[]       @relation("TransferToShop")
+  // ใบรับสินค้าของร้าน (เพิ่ม shopId ใน ConsignReceipt เพื่อผูกกลับ)
+  receipts    ConsignReceipt[] @relation("ReceiptShop")
+  // ใบส่งคืนของร้าน (มีอยู่แล้วใน ConsignReturn.shop)
+  returns     ConsignReturn[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  transfersTo   Transfer[]  @relation("TransferToShop")
-  receipts      ConsignReceipt[]
-  returns       ConsignReturn[]
 }
 
 model Transfer {
@@ -88,54 +112,64 @@ model Transfer {
   note         String?
   docDate      DateTime       @default(now())
 
-  fromBranch   Branch         @relation(fields: [fromBranchId], references: [id])
-  toShop       ConsignmentShop @relation("TransferToShop", fields: [toShopId], references: [id])
-  lines        TransferLine[]
-  receipts     ConsignReceipt[]
+  // 🧭 ความสัมพันธ์ชัดเจนด้วยชื่อ
+  fromBranch Branch           @relation("TransfersFromBranch", fields: [fromBranchId], references: [id])
+  toShop     ConsignmentShop  @relation("TransferToShop", fields: [toShopId], references: [id])
+  lines      TransferLine[]
+  receipts   ConsignReceipt[]
 
-  createdById  Int?
-  createdBy    User?          @relation(fields: [createdById], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdById Int?
+  createdBy   User? @relation("TransferCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TransferLine {
-  id           Int      @id @default(autoincrement())
-  transferId   Int
-  productId    Int
-  qtySent      Int      // จำนวนที่ส่งออก
-  qtyReceived  Int      @default(0) // จำนวนที่ถูกยืนยันรับ (sum จาก receipts)
-  note         String?
+  id          Int     @id @default(autoincrement())
+  transferId  Int
+  productId   Int
+  qtySent     Int
+  qtyReceived Int     @default(0)
+  note        String?
 
-  transfer     Transfer @relation(fields: [transferId], references: [id])
-  product      Product  @relation(fields: [productId], references: [id])
+  transfer Transfer @relation(fields: [transferId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  // 🔁 back-relations (ใหม่)
+  receiptLines ConsignReceiptLine[]
 }
 
 model ConsignReceipt {
-  id           Int      @id @default(autoincrement())
-  transferId   Int
-  docNo        String   @unique
-  receivedAt   DateTime @default(now())
-  note         String?
+  id         Int      @id @default(autoincrement())
+  transferId Int
+  docNo      String   @unique
+  receivedAt DateTime @default(now())
+  note       String?
 
-  transfer     Transfer @relation(fields: [transferId], references: [id])
-  lines        ConsignReceiptLine[]
+  // 🧭 ผูกกลับร้านฝากขายโดยตรง (เพื่อให้ ConsignmentShop.receipts ถูกต้อง)
+  shopId Int
+  shop   ConsignmentShop @relation("ReceiptShop", fields: [shopId], references: [id])
 
-  createdById  Int?
-  createdBy    User?    @relation(fields: [createdById], references: [id])
-  createdAt    DateTime @default(now())
+  transfer Transfer             @relation(fields: [transferId], references: [id])
+  lines    ConsignReceiptLine[]
+
+  createdById Int?
+  createdBy   User? @relation("ConsignReceiptCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model ConsignReceiptLine {
-  id           Int   @id @default(autoincrement())
-  receiptId    Int
+  id             Int @id @default(autoincrement())
+  receiptId      Int
   transferLineId Int
-  productId    Int
-  qtyReceived  Int   // จำนวนรับจริง (ของรอบนี้)
+  productId      Int
+  qtyReceived    Int
 
-  receipt      ConsignReceipt  @relation(fields: [receiptId], references: [id])
-  transferLine TransferLine    @relation(fields: [transferLineId], references: [id])
-  product      Product         @relation(fields: [productId], references: [id])
+  receipt      ConsignReceipt @relation(fields: [receiptId], references: [id])
+  transferLine TransferLine   @relation(fields: [transferLineId], references: [id])
+  product      Product        @relation(fields: [productId], references: [id])
 }
 
 enum ReturnStatus {
@@ -145,30 +179,31 @@ enum ReturnStatus {
 }
 
 model ConsignReturn {
-  id         Int        @id @default(autoincrement())
-  docNo      String     @unique
-  shopId     Int        // ร้านที่ส่งคืน
-  toBranchId Int        // สาขาหลักที่รับคืน
+  id         Int          @id @default(autoincrement())
+  docNo      String       @unique
+  shopId     Int // ร้านที่ส่งคืน
+  toBranchId Int // สาขาหลักที่รับคืน
   status     ReturnStatus @default(DRAFT)
-  docDate    DateTime   @default(now())
+  docDate    DateTime     @default(now())
   note       String?
 
-  shop       ConsignmentShop @relation(fields: [shopId], references: [id])
-  toBranch   Branch          @relation(fields: [toBranchId], references: [id])
-  lines      ConsignReturnLine[]
+  shop     ConsignmentShop     @relation(fields: [shopId], references: [id])
+  toBranch Branch              @relation("ReturnsToBranch", fields: [toBranchId], references: [id])
+  lines    ConsignReturnLine[]
 
-  createdById  Int?
-  createdBy    User?    @relation(fields: [createdById], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdById Int?
+  createdBy   User? @relation("ConsignReturnCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ConsignReturnLine {
-  id         Int      @id @default(autoincrement())
-  returnId   Int
-  productId  Int
-  qty        Int      // จำนวนที่จะส่งคืน
+  id        Int @id @default(autoincrement())
+  returnId  Int
+  productId Int
+  qty       Int
 
-  return     ConsignReturn @relation(fields: [returnId], references: [id])
-  product    Product       @relation(fields: [productId], references: [id])
+  return  ConsignReturn @relation(fields: [returnId], references: [id])
+  product Product       @relation(fields: [productId], references: [id])
 }
