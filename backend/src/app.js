@@ -11,17 +11,19 @@ import debugRoutes from "./routes/_debug.routes.js";
 const app = express();
 
 const allowed = (process.env.CORS_ORIGIN || "")
-.split(",")
-.map(s => s.trim())
-.filter(Boolean);
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    return cb(null, allowed.includes(origin));
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      return cb(null, allowed.includes(origin));
+    },
+    credentials: true,
+  })
+);
 
 app.use(helmet());
 app.use(morgan("dev"));

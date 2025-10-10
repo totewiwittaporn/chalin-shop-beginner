@@ -1,8 +1,13 @@
+// productTypes.routes.js
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
+import { requireAuth, requireRole } from "../middleware/auth.js"; // <— เพิ่ม
 
 const prisma = new PrismaClient();
 const router = Router();
+
+// ถ้าอยากบังคับให้ทุก endpoint ต้องล็อกอินก่อน:
+router.use(requireAuth); // <— เพิ่มบรรทัดนี้ (เอาออกได้ถ้าอยากเปิด GET สาธารณะ)
 
 // GET /api/product-types?search=...
 router.get("/", async (req, res, next) => {
@@ -16,8 +21,8 @@ router.get("/", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /api/product-types
-router.post("/", async (req, res, next) => {
+// POST /api/product-types  (ADMIN)
+router.post("/", requireRole("ADMIN"), async (req, res, next) => {
   try {
     const { name } = req.body;
     const created = await prisma.productType.create({ data: { name } });
@@ -25,8 +30,8 @@ router.post("/", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// PUT /api/product-types/:id
-router.put("/:id", async (req, res, next) => {
+// PUT /api/product-types/:id  (ADMIN)
+router.put("/:id", requireRole("ADMIN"), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { name } = req.body;
@@ -35,8 +40,8 @@ router.put("/:id", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// DELETE /api/product-types/:id
-router.delete("/:id", async (req, res, next) => {
+// DELETE /api/product-types/:id  (ADMIN)
+router.delete("/:id", requireRole("ADMIN"), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     await prisma.productType.delete({ where: { id } });
