@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum Role {
@@ -54,4 +55,120 @@ model Product {
   productType   ProductType @relation(fields: [productTypeId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+enum TransferStatus {
+  DRAFT
+  SENT        // โอนไปแล้ว รอร้านรับ
+  PARTIAL     // ร้านรับบางส่วน
+  RECEIVED    // ร้านรับครบ
+  CANCELLED
+}
+
+model ConsignmentShop {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  address   String?
+  // อาจผูกกับ Branch เจ้าของได้ถ้าต้องการ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transfersTo   Transfer[]  @relation("TransferToShop")
+  receipts      ConsignReceipt[]
+  returns       ConsignReturn[]
+}
+
+model Transfer {
+  id           Int            @id @default(autoincrement())
+  docNo        String         @unique
+  fromBranchId Int
+  toShopId     Int
+  status       TransferStatus @default(DRAFT)
+  note         String?
+  docDate      DateTime       @default(now())
+
+  fromBranch   Branch         @relation(fields: [fromBranchId], references: [id])
+  toShop       ConsignmentShop @relation("TransferToShop", fields: [toShopId], references: [id])
+  lines        TransferLine[]
+  receipts     ConsignReceipt[]
+
+  createdById  Int?
+  createdBy    User?          @relation(fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model TransferLine {
+  id           Int      @id @default(autoincrement())
+  transferId   Int
+  productId    Int
+  qtySent      Int      // จำนวนที่ส่งออก
+  qtyReceived  Int      @default(0) // จำนวนที่ถูกยืนยันรับ (sum จาก receipts)
+  note         String?
+
+  transfer     Transfer @relation(fields: [transferId], references: [id])
+  product      Product  @relation(fields: [productId], references: [id])
+}
+
+model ConsignReceipt {
+  id           Int      @id @default(autoincrement())
+  transferId   Int
+  docNo        String   @unique
+  receivedAt   DateTime @default(now())
+  note         String?
+
+  transfer     Transfer @relation(fields: [transferId], references: [id])
+  lines        ConsignReceiptLine[]
+
+  createdById  Int?
+  createdBy    User?    @relation(fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+model ConsignReceiptLine {
+  id           Int   @id @default(autoincrement())
+  receiptId    Int
+  transferLineId Int
+  productId    Int
+  qtyReceived  Int   // จำนวนรับจริง (ของรอบนี้)
+
+  receipt      ConsignReceipt  @relation(fields: [receiptId], references: [id])
+  transferLine TransferLine    @relation(fields: [transferLineId], references: [id])
+  product      Product         @relation(fields: [productId], references: [id])
+}
+
+enum ReturnStatus {
+  DRAFT
+  SENT
+  CANCELLED
+}
+
+model ConsignReturn {
+  id         Int        @id @default(autoincrement())
+  docNo      String     @unique
+  shopId     Int        // ร้านที่ส่งคืน
+  toBranchId Int        // สาขาหลักที่รับคืน
+  status     ReturnStatus @default(DRAFT)
+  docDate    DateTime   @default(now())
+  note       String?
+
+  shop       ConsignmentShop @relation(fields: [shopId], references: [id])
+  toBranch   Branch          @relation(fields: [toBranchId], references: [id])
+  lines      ConsignReturnLine[]
+
+  createdById  Int?
+  createdBy    User?    @relation(fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ConsignReturnLine {
+  id         Int      @id @default(autoincrement())
+  returnId   Int
+  productId  Int
+  qty        Int      // จำนวนที่จะส่งคืน
+
+  return     ConsignReturn @relation(fields: [returnId], references: [id])
+  product    Product       @relation(fields: [productId], references: [id])
 }
