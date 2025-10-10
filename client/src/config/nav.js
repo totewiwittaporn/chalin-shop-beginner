@@ -18,7 +18,7 @@ export const NAV_BY_ROLE = {
       { label: 'Purchases', to: '/purchases', icon: 'Cart' },
       { label: 'Delivery Branches', to: '/branches/delivery', icon: 'Swap' },
       { label: 'Delivery Consignments', to: '/consignment/delivery', icon: 'Swap' },
-      { label: 'POS Branches', to: '/branchse/sales', icon: 'Receipt' },
+      { label: 'POS Branches', to: '/branches/sales', icon: 'Receipt' },
       { label: 'POS Consignments', to: '/consignment/sales', icon: 'Receipt' },
       { label: 'Quotes', to: '/quotes', icon: 'FileText' },
     ]},
@@ -44,10 +44,10 @@ export const NAV_BY_ROLE = {
       { label: 'Count Inventory', to: '/inventory/count', icon: 'Boxes' },
     ]},
     { section: 'Transactions', items: [
-      { label: 'POS Branches', to: '/branch/sales', icon: 'Receipt' },
+      { label: 'POS Branches', to: '/branches/sales', icon: 'Receipt' },
     ]},
     { section: 'Reports', items: [
-      { label: 'Branch Sales', to: '/docs/branch-sales', icon: 'FileText' },
+      { label: 'Branch Sales', to: '/docs/branches-sales', icon: 'FileText' },
     ]},
     { section: 'Settings', items: [
       { label: 'Profile', to: '/profile', icon: 'Users' },
