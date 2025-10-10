@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { routerOptions } from './routerBase.js';
 
 import RootLayout from './pages/RootLayout.jsx';
@@ -28,20 +28,37 @@ import ConsaleDocs from './pages/docs/ConsaleDocs.jsx';
 import ReceiptDocs from './pages/docs/ReceiptDocs.jsx';
 import QuoteDocs from './pages/docs/QuoteDocs.jsx';
 import DocPreview from './pages/docs/DocPreview.jsx';
+import PreAuthLanding from './pages/auth/PreAuthLanding.jsx';
+import Login from './pages/auth/Login.jsx';
+import SignUp from './pages/auth/SignUp.jsx';
+
+import { useAuthStore } from './store/authStore.js';
+function RequireAuth({ children }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
 
 function InventoryConsignmentWrapper() {
   return <InventoryPage defaultScope="consignment" />;
 }
 
 const routes = [
+  { path: '/', element: <PreAuthLanding /> },
+  { path: '/login', element: <Login /> },
+  { path: '/sign-up', element: <SignUp /> },
   {
-    path: '/',
-    element: <RootLayout />,
+    path: '/app',
+    element: (
+      <RequireAuth>
+        <RootLayout />
+      </RequireAuth>
+    ),
     errorElement: <NotFoundPage />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'users', element: <UsersPage /> },
-      { path: 'products', element: <ProductsPage /> },
+      { index: true, element: <DashboardPage /> }, // /app
+      { path: 'users', element: <UsersPage /> }, // /app/users
+      { path: 'products', element: <ProductsPage /> }, // /app/products
       { path: 'consignment/categories', element: <ConsignmentCategoriesPage /> },
       { path: 'branches', element: <BranchesPage /> },
       { path: 'consignment-shops', element: <ConsignmentShopsPage /> },
@@ -57,12 +74,15 @@ const routes = [
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/templates', element: <TemplatesSettingsPage /> },
       { path: 'profile', element: <ProfilePage /> },
-      { path: 'dev/seeder', element: <DevSeeder /> },
     ],
   },
   {
-    path: 'docs',
-    element: <DocsHome />,
+    path: '/app/docs/',
+    element: (
+      <RequireAuth>
+        <DocsHome />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <div className="p-6">เลือกประเภทเอกสารจากเมนูด้านซ้าย</div> },
       { path: 'deliveries', element: <DeliveryDocs /> },

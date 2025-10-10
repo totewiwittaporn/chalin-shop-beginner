@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import api from "@/lib/api";
+import api from "../lib/api";
 
+export const ROLES = ['ADMIN', 'STAFF', 'CONSIGNMENT', 'QUOTE_VIEWER'];
 export const useAuthStore = create((set, get) => ({
   token: null,
   user: null,

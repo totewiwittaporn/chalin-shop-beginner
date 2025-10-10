@@ -6,10 +6,8 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const raw = localStorage.getItem("token") || "";
-  const token = raw.replace(/^Bearer\s+/i, "").trim(); // กัน Bearer ซ้ำ/ช่องว่างแฝง
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  const token = raw.replace(/^Bearer\s+/i, "").trim();
+  if (token && config.headers) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -18,8 +16,7 @@ api.interceptors.response.use(
   (err) => {
     if (err?.response?.status === 401) {
       localStorage.removeItem("token");
-      // เปลี่ยนเส้นทางไปหน้า login หรือแจ้งเตือนแล้วค่อยไป
-      // window.location.href = "/login";
+      // window.location.href = "/login"; // เปิดใช้ได้หากต้องการ
     }
     return Promise.reject(err);
   }
