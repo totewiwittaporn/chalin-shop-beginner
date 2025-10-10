@@ -1,4 +1,4 @@
-// client/src/routes/ConsignmentShopsPage.jsx
+// client/src/pages/ConsignmentShopsPage.jsx
 import { useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card.jsx';
 import { Table } from '../components/ui/Table.jsx';

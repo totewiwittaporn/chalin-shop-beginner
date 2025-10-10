@@ -2,9 +2,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
-  plugins: [react()],
-  base: '/chalin-shop-beginner/', // ใช้ชื่อ repo ของคุณ
-      dedupe: ['react', 'react-dom'] // บังคับให้ใช้ React ชุดเดียว
-
-})
+export default ({ mode }) =>
+  defineConfig({
+    plugins: [react()],
+    // dev => '/', GitHub Pages => '/chalin-shop-beginner/'
+    base: mode === 'pages' ? '/chalin-shop-beginner/' : '/',
+  })

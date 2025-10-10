@@ -1,4 +1,4 @@
-// client/src/routes/docs/InvoiceDocs.jsx
+// client/src/pages/docs/InvoiceDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 

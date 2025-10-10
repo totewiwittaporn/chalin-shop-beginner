@@ -1,35 +1,35 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 // Layout หลัก (มี Sidebar + Navbar)
-import RootLayout from './routes/RootLayout.jsx';
+import RootLayout from './pages/RootLayout.jsx';
 
 // หน้าใช้งานหลัก
-import DashboardPage from './routes/DashboardPage.jsx';
-import ProductsPage from './routes/ProductsPage.jsx';
-import ConsignmentCategoriesPage from './routes/ConsignmentCategoriesPage.jsx';
-import BranchesPage from './routes/BranchesPage.jsx';
-import ConsignmentShopsPage from './routes/ConsignmentShopsPage.jsx';
-import InventoryPage from './routes/InventoryPage.jsx';
-import CountInventoryPage from './routes/CountInventoryPage.jsx';
-import PurchasesPage from './routes/PurchasesPage.jsx';
-import QuotesPage from './routes/QuotesPage.jsx';
-import SettingsPage from './routes/SettingsPage.jsx';
-import ProfilePage from './routes/ProfilePage.jsx';
-import NotFoundPage from './routes/NotFoundPage.jsx';
-import UsersPage from './routes/UsersPage.jsx';
-import TemplatesSettingsPage from './routes/TemplatesSettingsPage.jsx';
-import BranchDeliveryPage from './routes/BranchDeliveryPage.jsx';
-import BranchSalesPage from './routes/BranchSalesPage.jsx';
-import ConsignmentDeliveryPage from './routes/ConsignmentDeliveryPage.jsx';
-import ConsignmentSalesPage from './routes/ConsignmentSalesPage.jsx';
-import DevSeeder from './routes/DevSeeder.jsx';
-import DocsHome from './routes/docs/DocsHome.jsx';
-import DeliveryDocs from './routes/docs/DeliveryDocs.jsx';
-import InvoiceDocs from './routes/docs/InvoiceDocs.jsx';
-import ConsaleDocs from './routes/docs/ConsaleDocs.jsx';
-import ReceiptDocs from './routes/docs/ReceiptDocs.jsx';
-import QuoteDocs from './routes/docs/QuoteDocs.jsx';
-import DocPreview from './routes/docs/DocPreview.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import ProductsPage from './pages/ProductsPage.jsx';
+import ConsignmentCategoriesPage from './pages/ConsignmentCategoriesPage.jsx';
+import BranchesPage from './pages/BranchesPage.jsx';
+import ConsignmentShopsPage from './pages/ConsignmentShopsPage.jsx';
+import InventoryPage from './pages/InventoryPage.jsx';
+import CountInventoryPage from './pages/CountInventoryPage.jsx';
+import PurchasesPage from './pages/PurchasesPage.jsx';
+import QuotesPage from './pages/QuotesPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import UsersPage from './pages/UsersPage.jsx';
+import TemplatesSettingsPage from './pages/TemplatesSettingsPage.jsx';
+import BranchDeliveryPage from './pages/BranchDeliveryPage.jsx';
+import BranchSalesPage from './pages/BranchSalesPage.jsx';
+import ConsignmentDeliveryPage from './pages/ConsignmentDeliveryPage.jsx';
+import ConsignmentSalesPage from './pages/ConsignmentSalesPage.jsx';
+import DevSeeder from './pages/DevSeeder.jsx';
+import DocsHome from './pages/docs/DocsHome.jsx';
+import DeliveryDocs from './pages/docs/DeliveryDocs.jsx';
+import InvoiceDocs from './pages/docs/InvoiceDocs.jsx';
+import ConsaleDocs from './pages/docs/ConsaleDocs.jsx';
+import ReceiptDocs from './pages/docs/ReceiptDocs.jsx';
+import QuoteDocs from './pages/docs/QuoteDocs.jsx';
+import DocPreview from './pages/docs/DocPreview.jsx';
 
 // ----- Wrapper ทางลัดโหมด Consignment -----
 // ใช้คอมโพเนนต์ InventoryPage ตัวเดิม แต่บังคับให้เริ่มที่ scope = "consignment"

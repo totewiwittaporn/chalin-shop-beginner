@@ -1,4 +1,4 @@
-// client/src/routes/DevSeeder.jsx
+// client/src/pages/DevSeeder.jsx
 import { useState } from 'react';
 import { useDataStore } from '../store/dataStore.js';
 export default function DevSeeder() {

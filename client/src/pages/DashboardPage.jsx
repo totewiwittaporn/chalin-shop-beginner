@@ -1,4 +1,4 @@
-// client/src/routes/DashboardPage.jsx
+// client/src/pages/DashboardPage.jsx
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
 import { useDataStore } from '../store/dataStore.js';

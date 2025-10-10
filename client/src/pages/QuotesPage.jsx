@@ -1,4 +1,4 @@
-// client/src/routes/QuotesPage.jsx
+// client/src/pages/QuotesPage.jsx
 import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { useDataStore } from '../store/dataStore.js';

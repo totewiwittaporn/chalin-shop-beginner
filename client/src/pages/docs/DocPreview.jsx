@@ -1,4 +1,4 @@
-// src/routes/docs/DocPreview.jsx
+// src/pages/docs/DocPreview.jsx
 import { useParams } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 

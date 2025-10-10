@@ -1,4 +1,4 @@
-// src/routes/RootLayout.jsx
+// src/pages/RootLayout.jsx
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar.jsx';
 import Navbar from '../components/layout/Navbar.jsx';

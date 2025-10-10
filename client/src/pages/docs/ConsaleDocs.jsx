@@ -1,4 +1,4 @@
-// client/src/routes/docs/ConsaleDocs.jsx
+// client/src/pages/docs/ConsaleDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 

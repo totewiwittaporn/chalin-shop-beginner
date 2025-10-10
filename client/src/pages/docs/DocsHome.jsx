@@ -1,4 +1,4 @@
-// src/routes/docs/DocsHome.jsx
+// src/pages/docs/DocsHome.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 
 export default function DocsHome(){

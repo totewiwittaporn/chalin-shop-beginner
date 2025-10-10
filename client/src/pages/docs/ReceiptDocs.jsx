@@ -1,4 +1,4 @@
-// client/src/routes/docs/ReceiptDocs.jsx
+// client/src/pages/docs/ReceiptDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 

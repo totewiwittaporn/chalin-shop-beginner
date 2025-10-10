@@ -1,4 +1,4 @@
-// client/src/routes/docs/QuoteDocs.jsx
+// client/src/pages/docs/QuoteDocs.jsx
 import { Link } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 

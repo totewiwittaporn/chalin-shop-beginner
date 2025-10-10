@@ -1,4 +1,4 @@
-// client/src/routes/TemplatesSettingsPage.jsx
+// client/src/pages/TemplatesSettingsPage.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card.jsx';
 import { Table } from '../components/ui/Table.jsx';
