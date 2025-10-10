@@ -1,7 +1,8 @@
 // src/components/layout/MobileMenuDrawer.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Link } from 'react-router-dom';
-import { MOBILE_GROUPS } from '../../nav.mobile.js'; // ← ระวังพาธ: 2 ชั้นขึ้นจาก /components/layout
+import { MOBILE_GROUPS } from '../../nav.mobile.js'; // 2 ชั้นขึ้นจาก /components/layout
 
 function Group({ label, items, defaultOpen=false, onItemClick }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -12,7 +13,7 @@ function Group({ label, items, defaultOpen=false, onItemClick }) {
         onClick={() => setOpen(v => !v)}
       >
         <span className="font-medium">{label}</span>
-        <span className={`i-lucide-chevron-down transition ${open ? 'rotate-180' : ''}`} />
+        <span className={`transition ${open ? 'rotate-180' : ''}`}>⌄</span>
       </button>
       {open && (
         <div className="grid pb-3">
@@ -35,29 +36,30 @@ function Group({ label, items, defaultOpen=false, onItemClick }) {
 }
 
 export default function MobileMenuDrawer({ open, onClose, role='ADMIN' }) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  const groups = MOBILE_GROUPS(role.toLowerCase?.() || role);
+  if (!open || !mounted) return null;
 
-  return (
-    // ตัว Drawer กินเต็มหน้าจอ และซ้อนบนสุด
-    <div className="md:hidden fixed inset-0 z-50">
-      {/* ฉากหลังคลิกเพื่อปิด */}
+  const groups = MOBILE_GROUPS((role?.toLowerCase?.() || role));
+
+  // ใช้ Portal → ใส่ไว้ที่ document.body เพื่อเลี่ยงปัญหา backdrop-filter/stacking ของ header
+  return createPortal(
+    <div className="md:hidden fixed inset-0 z-[9999]">
+      {/* backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-      {/* แถบเมนูเลื่อนจากซ้าย */}
+      {/* panel */}
       <div className="absolute top-0 bottom-0 left-0 w-[86%] max-w-[360px] bg-background p-4 overflow-y-auto">
         <div className="flex items-center justify-between mb-2">
           <div className="text-lg font-semibold">เมนู</div>
           <button className="btn btn-ghost" onClick={onClose} aria-label="close">✕</button>
         </div>
 
-        {/* ปุ่มไปหน้าแดชบอร์ด */}
         <Link to="/" onClick={onClose} className="block px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 font-medium mb-3">
           Dashboard
         </Link>
 
-        {/* กลุ่มเมนูแบบ Accordion — ไม่มีช่องค้นหาตามที่ขอ */}
         <div className="grid">
           {groups.map((g, idx) => (
             <Group
@@ -70,6 +72,7 @@ export default function MobileMenuDrawer({ open, onClose, role='ADMIN' }) {
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

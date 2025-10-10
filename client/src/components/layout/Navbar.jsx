@@ -19,12 +19,12 @@ export default function Navbar() {
           ☰
         </button>
 
-        {/* ช่องค้นหา (คงไว้บนแถบด้านบนตามเดิม) */}
+        {/* ช่องค้นหาด้านบน (คงไว้บน navbar) */}
         <div className="flex-1 max-w-xl">
           <input placeholder="Search…" className="w-full glass rounded-2xl px-4 py-2 outline-none" />
         </div>
 
-        {/* ตัวเลือก Role */}
+        {/* Role switcher */}
         <div className="flex items-center gap-2">
           <span className="text-muted text-sm hidden md:inline">Role</span>
           <select
@@ -37,7 +37,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Drawer เมนูมือถือ */}
+      {/* Drawer ถูก mount เป็น Portal ไปที่ body */}
       <MobileMenuDrawer open={open} onClose={()=>setOpen(false)} role={user.role} />
     </header>
   );
