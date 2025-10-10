@@ -1,0 +1,6 @@
+export const Roles = {
+  ADMIN: "ADMIN",
+  STAFF: "STAFF",
+  CONSIGNMENT: "CONSIGNMENT",
+  QUOTE_VIEWER: "QUOTE_VIEWER",
+};
