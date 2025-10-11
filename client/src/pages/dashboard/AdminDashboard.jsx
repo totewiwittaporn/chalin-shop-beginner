@@ -1,34 +1,14 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
-import Input from "../../components/ui/Input";
-import Select from "../../components/ui/Select";
-import Button from "../../components/ui/Button";
-import StatCard from "../../components/ui/StatCard";
-import DeltaPill from "../../components/ui/DeltaPill";
 import { Card } from "../../components/ui/Card";
-import { Table } from "../../components/ui/Table";
-import ActivityList from "../../components/ui/ActivityList";
-import LowStockCard from "../../components/ui/LowStockCard";
-
-function HeaderBar({ title, children }) {
-  return (
-    <div className="toolbar-glass p-3 md:p-4 mb-4">
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-        <div className="flex-1 text-base md:text-lg font-medium">{title}</div>
-        {children}
-      </div>
-    </div>
-  );
-}
+import StatCard from "../../components/ui/StatCard";
+import * as Table from "../../components/ui/Table.jsx"; // ⬅️ ใช้ namespace import
+import Button from "../../components/ui/Button";
 
 export default function AdminDashboard() {
-  const [q, setQ] = useState("");
-  const [range, setRange] = useState("30d");
-  const [kpi, setKpi] = useState({ today: 0, yesterday: 0, month: 0, slipToday: 0, pct: 0 });
   const [users, setUsers] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [low, setLow] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [summary, setSummary] = useState({ gross: 0, count: 0 });
+  const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,102 +16,108 @@ export default function AdminDashboard() {
     (async () => {
       try {
         setLoading(true);
-        const [u, b, s, l] = await Promise.all([
-          api.get("/api/users").catch(() => ({ data: [] })),
-          api.get("/api/branches").catch(() => ({ data: [] })),
-          api.get("/api/sales/summary", { params: { range } }).catch(() => ({ data: {} })),
-          api.get("/api/products/low-stock", { params: { lt: 10 } }).catch(() => ({ data: [] })),
+        // เรียก 3 endpoint ที่เพิ่งเพิ่ม
+        const [u, s, l] = await Promise.all([
+          api.get("/api/users").catch((e) => ({ data: { items: [] } })),
+          api.get("/api/sales/summary", { params: { range: "30d" } }).catch((e) => ({ data: { gross: 0, count: 0 } })),
+          api.get("/api/products/low-stock", { params: { lt: 10 } }).catch((e) => ({ data: { items: [] } })),
         ]);
-
-        const sum = s.data || {};
-        const acts = [
-          { title: "ระบบพร้อมใช้งาน", type: "system", date: new Date(), status: "ok" },
-          { title: "ดึงข้อมูลสรุปยอดขาย", type: "fetch", date: new Date(), status: "done" },
-        ];
-
         if (!on) return;
-        setUsers(u.data || []);
-        setBranches(b.data || []);
-        setLow(l.data || []);
-        setKpi({
-          today: sum.today ?? 0,
-          yesterday: sum.yesterday ?? 0,
-          month: sum.total ?? 0,
-          slipToday: sum.slipToday ?? 0,
-          pct: sum.pct ?? 0,
-        });
-        setActivities(acts);
+        setUsers(u.data.items || []);
+        setSummary({ gross: Number(s.data.gross || 0), count: Number(s.data.count || 0) });
+        setLowStock(l.data.items || []);
       } finally {
-        on && setLoading(false);
+        if (on) setLoading(false);
       }
     })();
     return () => { on = false; };
-  }, [range]);
-
-  const columns = [
-    { key: "name", header: "สาขา" },
-    { key: "code", header: "รหัส" },
-    { key: "manager", header: "ผู้จัดการ", render: (_, r) => r.manager?.name || "-" },
-    { key: "phone", header: "โทร" },
-  ];
+  }, []);
 
   return (
-    <div className="p-4 md:p-6">
-      <HeaderBar title="Admin Dashboard">
-        <div className="flex gap-3 items-center">
-          <Input className="input-glass w-56" placeholder="Search..." value={q} onChange={(e)=>setQ(e.target.value)} />
-          <Select
-            value={range}
-            onChange={setRange}
-            options={[
-              { value: "7d", label: "7 วัน" },
-              { value: "30d", label: "30 วัน" },
-              { value: "90d", label: "90 วัน" },
-            ]}
-          />
-          <Button className="btn-white">Export</Button>
+    <div className="grid gap-4">
+      {/* แถว KPI */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          variant="gradient"
+          label="ยอดขาย (30 วัน)"
+          value={new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(summary.gross)}
+        />
+        <StatCard
+          label="จำนวนบิล (30 วัน)"
+          value={summary.count.toLocaleString()}
+        />
+        <StatCard
+          label="ผู้ใช้งานทั้งหมด"
+          value={users.length.toLocaleString()}
+        />
+      </div>
+
+      {/* ผู้ใช้ล่าสุด */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-4 pt-3 pb-2">
+          <div className="text-base font-semibold">ผู้ใช้งานล่าสุด</div>
+          <div className="text-xs text-muted">เฉพาะ ADMIN เท่านั้นที่เห็นข้อมูลนี้</div>
         </div>
-      </HeaderBar>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <StatCard title="ยอดขายวันนี้" value={fmt(kpi.today)} right={<DeltaPill delta={kpi.pct} />} />
-        <StatCard title="ยอดขายเมื่อวานนี้" value={fmt(kpi.yesterday)} />
-        <StatCard title="ยอดขายเดือนนี้" value={fmt(kpi.month)} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <StatCard title="ใบส่งของ (วันนี้)" value={kpi.slipToday || 0} />
-        <StatCard title="ผู้ใช้ทั้งหมด" value={users.length} hint="รวมทุกบทบาท" />
-        <StatCard title="จำนวนสาขา" value={branches.length} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <div className="h-title mb-3">สาขา</div>
-            {loading ? (
-              <div className="text-muted text-sm">Loading…</div>
-            ) : (
-              <Table
-                columns={columns}
-                data={(branches || []).filter((b) =>
-                  [b.name, b.code, b.manager?.name, b.phone].join(" ").toLowerCase().includes(q.toLowerCase())
-                )}
-              />
+        <Table.Root>
+          <Table.Head>
+            <Table.Tr>
+              <Table.Th className="w-[220px]">อีเมล</Table.Th>
+              <Table.Th>ชื่อ</Table.Th>
+              <Table.Th className="w-[120px]">บทบาท</Table.Th>
+              <Table.Th className="w-[120px]">สาขา</Table.Th>
+            </Table.Tr>
+          </Table.Head>
+          <Table.Body loading={loading}>
+            {users.map((u) => (
+              <Table.Tr key={u.id}>
+                <Table.Td className="font-mono text-sm">{u.email}</Table.Td>
+                <Table.Td>{u.name || "-"}</Table.Td>
+                <Table.Td>{u.role}</Table.Td>
+                <Table.Td>{u.branchId ?? "-"}</Table.Td>
+              </Table.Tr>
+            ))}
+            {!loading && users.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={4} className="text-center text-muted py-10">ไม่มีข้อมูล</Table.Td>
+              </Table.Tr>
             )}
-          </Card>
+          </Table.Body>
+        </Table.Root>
+      </Card>
+
+      {/* สินค้าใกล้หมด */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+          <div>
+            <div className="text-base font-semibold">สินค้าใกล้หมด (LT 10)</div>
+            <div className="text-xs text-muted">สาธิต—ยังไม่มี stock field ในสคีมจึงคืนลิสต์ว่าง</div>
+          </div>
+          <Button kind="white" type="button" onClick={() => window.location.assign('/products')}>ไปหน้าสินค้า</Button>
         </div>
-        <div className="grid gap-4">
-          <LowStockCard rows={low} />
-          <ActivityList items={activities} />
-        </div>
-      </div>
+        <Table.Root>
+          <Table.Head>
+            <Table.Tr>
+              <Table.Th className="w-[160px]">Barcode</Table.Th>
+              <Table.Th>ชื่อสินค้า</Table.Th>
+              <Table.Th className="w-[120px] text-right">คงเหลือ</Table.Th>
+            </Table.Tr>
+          </Table.Head>
+          <Table.Body loading={loading}>
+            {lowStock.map((p) => (
+              <Table.Tr key={p.id}>
+                <Table.Td className="font-mono text-sm">{p.barcode}</Table.Td>
+                <Table.Td>{p.name}</Table.Td>
+                <Table.Td className="text-right">{p.stockQty ?? 0}</Table.Td>
+              </Table.Tr>
+            ))}
+            {!loading && lowStock.length === 0 && (
+              <Table.Tr>
+                <Table.Td colSpan={3} className="text-center text-muted py-10">ไม่มีสินค้าใกล้หมด</Table.Td>
+              </Table.Tr>
+            )}
+          </Table.Body>
+        </Table.Root>
+      </Card>
     </div>
   );
-}
-
-function fmt(n) {
-  if (n == null) return "0.00";
-  try { return Number(n).toLocaleString("th-TH", { style: "currency", currency: "THB" }); }
-  catch { return String(n); }
 }

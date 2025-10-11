@@ -1,4 +1,5 @@
 // client/src/components/ui/Table.jsx
+
 export function Root({ children, className = "" }) {
   return (
     <div className={`overflow-x-auto ${className}`}>
@@ -22,7 +23,9 @@ export function Body({ children, loading = false }) {
     return (
       <tbody>
         <tr>
-          <td colSpan={999} className="text-center py-10 text-muted">กำลังโหลดข้อมูล…</td>
+          <td colSpan={999} className="text-center py-10 text-muted">
+            กำลังโหลดข้อมูล…
+          </td>
         </tr>
       </tbody>
     );
@@ -31,12 +34,18 @@ export function Body({ children, loading = false }) {
 }
 
 export function Tr({ children }) {
-  return <tr className="border-b border-[rgba(15,23,42,.08)] last:border-0">{children}</tr>;
+  return (
+    <tr className="border-b border-[rgba(15,23,42,.08)] last:border-0">
+      {children}
+    </tr>
+  );
 }
 
 export function Th({ children, className = "" }) {
   return (
-    <th className={`px-4 py-2 font-medium border-b border-[rgba(15,23,42,.08)] ${className}`}>
+    <th
+      className={`px-4 py-2 font-medium border-b border-[rgba(15,23,42,.08)] ${className}`}
+    >
       {children}
     </th>
   );
@@ -50,6 +59,6 @@ export function Td({ children, className = "", colSpan }) {
   );
 }
 
-// 🔽 default export สำหรับใช้แบบ `import Table from ".../Table"`
-const Table = { Root, Head, Body, Tr, Th, Td };
+// ✅ รวมเป็นอ็อบเจกต์ Table แล้วส่งออกทั้ง named และ default
+export const Table = { Root, Head, Body, Tr, Th, Td };
 export default Table;
