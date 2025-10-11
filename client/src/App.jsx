@@ -20,7 +20,6 @@ import BranchDeliveryPage from './pages/BranchDeliveryPage.jsx';
 import BranchSalesPage from './pages/BranchSalesPage.jsx';
 import ConsignmentDeliveryPage from './pages/ConsignmentDeliveryPage.jsx';
 import ConsignmentSalesPage from './pages/ConsignmentSalesPage.jsx';
-import DevSeeder from './pages/DevSeeder.jsx';
 import DocsHome from './pages/docs/DocsHome.jsx';
 import DeliveryDocs from './pages/docs/DeliveryDocs.jsx';
 import InvoiceDocs from './pages/docs/InvoiceDocs.jsx';
@@ -31,6 +30,7 @@ import DocPreview from './pages/docs/DocPreview.jsx';
 import PreAuthLanding from './pages/auth/PreAuthLanding.jsx';
 import Login from './pages/auth/Login.jsx';
 import SignUp from './pages/auth/SignUp.jsx';
+import DashboardRouter from './pages/DashboardRouter.jsx';
 
 import { useAuthStore } from './store/authStore.js';
 function RequireAuth({ children }) {
@@ -44,16 +44,14 @@ function InventoryConsignmentWrapper() {
 }
 
 const routes = [
-  { path: '/welcome', element: <PreAuthLanding /> },
+  { path: '/', element: <PreAuthLanding />, errorElement: <NotFoundPage /> },
   { path: '/login', element: <Login /> },
   { path: '/sign-up', element: <SignUp /> },
+  { path: '/dashboard', element: <DashboardRouter /> },
+
   {
-    path: '',
-    element: (
-      <RequireAuth>
-        <RootLayout />
-      </RequireAuth>
-    ),
+    path: '/',
+    element: <RequireAuth><RootLayout /></RequireAuth>,
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <DashboardPage /> },

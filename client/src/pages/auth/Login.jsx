@@ -12,9 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (user) navigate('/', { replace: true });
-  }, [user, navigate]);
+  useEffect(() => { if (user) navigate('/dashboard', { replace: true }); }, [user, navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +20,7 @@ export default function Login() {
     setError('');
     try {
       await login(email, password);
-      navigate('/app', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       console.error(err);
       setError(err?.response?.data?.error || 'เข้าสู่ระบบไม่สำเร็จ');

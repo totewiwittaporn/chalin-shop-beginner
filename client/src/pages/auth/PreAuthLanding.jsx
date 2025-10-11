@@ -1,6 +1,19 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuthStore } from '../../store/authStore';
+import { dashboardPathByRole } from '../../lib/roleRoute';
 
 export default function PreAuthLanding() {
+  
+    const user = useAuthStore(s => s.user);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate(dashboardPathByRole(user.role), { replace: true });
+    }
+  }, [user, navigate]);
+  
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--nav-fg)] flex items-center justify-center p-6">
       <div className="max-w-3xl w-full backdrop-blur-xl bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] border border-[var(--surface-border)] rounded-3xl shadow-2xl p-10">
