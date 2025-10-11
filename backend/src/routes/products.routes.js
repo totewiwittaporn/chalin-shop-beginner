@@ -1,16 +1,12 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 
-const prisma = new PrismaClient();
 const r = express.Router();
 
 /**
  * GET /api/products
  * query: q, page=1, pageSize=20
- * - ADMIN: เห็นทุกสาขา
- * - STAFF/CONSIGNMENT: เห็นเฉพาะสาขาตัวเอง (ถ้ามี branchId)
- * - QUOTE_VIEWER: อนุญาตอ่านได้ (ถ้าไม่ต้องการให้เห็นทั้งหมด ให้คุมตามนโยบายคุณ)
  */
 r.get("/", requireAuth, async (req, res, next) => {
   try {
@@ -46,7 +42,13 @@ r.get("/", requireAuth, async (req, res, next) => {
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
-        select: { id: true, barcode: true, name: true, costPrice: true, salePrice: true },
+        select: {
+          id: true,
+          barcode: true,
+          name: true,
+          costPrice: true,
+          salePrice: true,
+        },
       }),
       prisma.product.count({ where }),
     ]);
@@ -59,38 +61,85 @@ r.get("/", requireAuth, async (req, res, next) => {
 
 /**
  * POST /api/products
- * body: { barcode, name, costPrice, salePrice }
- * - ADMIN/STAFF/CONSIGNMENT: สร้างได้
- * - QUOTE_VIEWER: ห้าม (403)
+ * ADMIN/STAFF/CONSIGNMENT
  */
-r.post(
-  "/",
+r.post("/", requireAuth, requireRole("ADMIN", "STAFF", "CONSIGNMENT"), async (req, res, next) => {
+  try {
+    const { barcode, name, costPrice, salePrice, productTypeId, branchId } = req.body;
+    if (!barcode || !name) return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
+
+    const exists = await prisma.product.findUnique({ where: { barcode } });
+    if (exists) return res.status(409).json({ error: "มีบาร์โค้ดนี้อยู่แล้ว" });
+
+    const data = {
+      barcode: String(barcode).trim(),
+      name: String(name).trim(),
+      productTypeId: productTypeId ?? null,
+      costPrice: Number(costPrice) || 0,
+      salePrice: Number(salePrice) || 0,
+      branchId: (String(req.user.role).toUpperCase() === "STAFF" ? req.user.branchId : branchId) ?? null,
+    };
+
+    const created = await prisma.product.create({ data });
+    res.status(201).json({
+      id: created.id,
+      barcode: created.barcode,
+      name: created.name,
+      costPrice: created.costPrice,
+      salePrice: created.salePrice,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * GET /api/products/low-stock?lt=10&partnerId=...
+ * - ADMIN/STAFF: ดูทั้งหมด หรือกำหนด partnerId
+ * - CONSIGNMENT: เห็นเฉพาะ partnerId ของตัวเอง
+ * ใช้ ConsignmentInventory จาก schema จริง
+ */
+r.get(
+  "/low-stock",
   requireAuth,
   requireRole("ADMIN", "STAFF", "CONSIGNMENT"),
   async (req, res, next) => {
     try {
-      const { barcode, name, costPrice, salePrice } = req.body;
-      if (!barcode || !name) return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
+      const lt = Number(req.query.lt ?? 10);
+      const partnerQuery = req.query.partnerId ? Number(req.query.partnerId) : null;
 
-      const exists = await prisma.product.findUnique({ where: { barcode } });
-      if (exists) return res.status(409).json({ error: "มีบาร์โค้ดนี้อยู่แล้ว" });
+      let partnerId = partnerQuery;
+      if (String(req.user.role).toUpperCase() === "CONSIGNMENT") {
+        partnerId = req.user.partnerId ?? null;
+      }
 
-      const data = {
-        barcode: String(barcode).trim(),
-        name: String(name).trim(),
-        costPrice: Number(costPrice) || 0,
-        salePrice: Number(salePrice) || 0,
-        branchId: req.user.branchId ?? null, // ผูกตามสาขาผู้สร้างถ้ามี
+      const where = {
+        qtyOnHand: { lt },
+        ...(partnerId ? { partnerId } : {}),
       };
 
-      const created = await prisma.product.create({ data });
-      res.status(201).json({
-        id: created.id,
-        barcode: created.barcode,
-        name: created.name,
-        costPrice: created.costPrice,
-        salePrice: created.salePrice,
+      const rows = await prisma.consignmentInventory.findMany({
+        where,
+        include: {
+          product: true,
+          partner: true,
+        },
+        orderBy: [{ qtyOnHand: "asc" }, { partnerId: "asc" }],
+        take: 200,
       });
+
+      const items = rows.map((r) => ({
+        id: r.id,
+        partnerId: r.partnerId,
+        partnerName: r.partner?.name ?? null,
+        productId: r.productId,
+        barcode: r.product?.barcode ?? null,
+        name: r.product?.name ?? null,
+        qtyOnHand: r.qtyOnHand,
+        threshold: lt,
+      }));
+
+      res.json({ items, total: items.length });
     } catch (e) {
       next(e);
     }

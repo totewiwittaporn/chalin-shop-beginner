@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import api from "../../lib/axios"; // ✅ ชี้ไป axios instance ที่คุณใช้อยู่
+import api from "../../lib/axios"; // axios instance
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
-import { Card } from "../../components/ui/Card";
+import Card from "../../components/ui/Card"; // ตอนนี้รองรับ default ได้แล้ว
 import Table from "../../components/ui/Table";
 import ProductFormModal from "../../components/products/ProductFormModal";
 
@@ -22,10 +22,9 @@ function formatMoney(n) {
 }
 
 /**
- * Layout เป้าหมาย:
- * - Content Area bg ขาวอมฟ้านวล: ตั้งค่าที่ AppShell แล้ว (bg-[rgba(237,243,255,0.6)])
- * - ส่วนเนื้อหาในหน้านี้ใช้ Card variant="gradient" สำหรับหัวการ์ด/ฟิลเตอร์
- * - ตารางวางใน Card ปกติ (พื้นขาว) เพื่ออ่านตารางชัด
+ * Layout:
+ * - หัวการ์ดใช้ gradient เพื่อเน้น filter/action
+ * - ตารางอยู่ในการ์ดพื้นขาวเพื่ออ่านง่าย
  */
 export default function ProductsPage() {
   // คำค้น / modal / loading
@@ -35,7 +34,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
-  // pagination แบบง่าย (คุณจะต่อยอดเป็น server-side page ได้)
+  // pagination แบบง่าย (ต่อยอดเป็น server-side page ได้)
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -52,8 +51,16 @@ export default function ProductsPage() {
               pageSize,
             },
           });
-          setList(res.data.items || []);
-          setCount(res.data.total || 0);
+
+          // ✅ รองรับทั้งกรณี BE คืนเป็น array ตรง ๆ หรือเป็น { items, total }
+          const data = res?.data;
+          const items = Array.isArray(data) ? data : data?.items || [];
+          const total = Array.isArray(data)
+            ? data.length
+            : (typeof data?.total === "number" ? data.total : items.length);
+
+          setList(items);
+          setCount(total);
         } catch (e) {
           console.error(e);
         } finally {
@@ -70,7 +77,6 @@ export default function ProductsPage() {
   // สร้างสินค้าใหม่แล้วรีเฟรช
   async function handleCreated() {
     setShowAdd(false);
-    // รีเซ็ตไปหน้าแรกและค้นหาปัจจุบัน
     setPage(1);
     fetchProducts({ q, page: 1 });
   }
@@ -79,7 +85,7 @@ export default function ProductsPage() {
 
   return (
     <div className="grid gap-4">
-      {/* ส่วนที่ 1: หัวข้อ/ค้นหา/เพิ่มสินค้า (การ์ดเกรเดี้ยน) */}
+      {/* ส่วนที่ 1: หัวข้อ/ค้นหา/เพิ่มสินค้า */}
       <Card variant="gradient" className="p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="min-w-0">
@@ -95,6 +101,7 @@ export default function ProductsPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="ค้นหาจากชื่อสินค้า หรือบาร์โค้ด…"
+              onKeyDown={(e) => e.key === "Enter" && fetchProducts({ q, page: 1 })}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -105,13 +112,14 @@ export default function ProductsPage() {
         </div>
       </Card>
 
-      {/* ส่วนที่ 2: ตารางสินค้า (การ์ดพื้นขาวอ่านง่าย) */}
+      {/* ส่วนที่ 2: ตารางสินค้า */}
       <Card className="p-0 overflow-hidden">
         <div className="px-4 pt-3 pb-2">
           <div className="text-sm text-muted">
             พบทั้งหมด {count.toLocaleString()} รายการ
           </div>
         </div>
+
         <Table>
           <Table.Head>
             <Table.Tr>

@@ -2,13 +2,13 @@ import clsx from "clsx";
 
 /**
  * Card UI
- * - variant="solid"     : การ์ดพื้นขาวนวล (ค่าเริ่มต้นของคุณ)
- * - variant="glass"     : การ์ดโปร่งแบบ glass (ถ้าใช้อยู่แล้ว)
- * - variant="gradient"  : การ์ดกราเดียนต์ฟ้า → ม่วง พร้อมตัวอักษรสีขาว
+ * - variant="solid"     : การ์ดพื้นขาวนวล (default)
+ * - variant="glass"     : การ์ดโปร่งแบบ glass
+ * - variant="gradient"  : กราเดียนต์ฟ้า → ม่วง (ตัวหนังสือสีขาว)
  *
  * ใช้งาน:
- *   <Card className="p-4">...</Card>                          // ขาวนวล (default)
- *   <Card variant="gradient" className="p-4">...</Card>        // กราเดียนต์
+ *   <Card className="p-4">...</Card>
+ *   <Card variant="gradient" className="p-4">...</Card>
  *   <Card.Header>...</Card.Header>
  *   <Card.Body>...</Card.Body>
  *   <Card.Footer>...</Card.Footer>
@@ -24,17 +24,11 @@ export function Card({
   const base = "rounded-2xl border overflow-hidden";
   const variants = {
     solid:
-      // พื้นขาวนวลตามธีมเดิม
-      "bg-[var(--card-bg)] border-[var(--card-border)] " +
-      "shadow-[0_8px_24px_rgba(15,23,42,.05)]",
+      "bg-[var(--card-bg)] border-[var(--card-border)] shadow-[0_8px_24px_rgba(15,23,42,.05)]",
     glass:
-      // ถ้าคุณมีส่วนที่ใช้ glass อยู่แล้ว
-      "backdrop-blur-xl bg-white/55 border-[var(--card-border)] " +
-      "shadow-[0_8px_24px_rgba(15,23,42,.05)]",
+      "backdrop-blur-xl bg-white/55 border-[var(--card-border)] shadow-[0_8px_24px_rgba(15,23,42,.05)]",
     gradient:
-      // ใหม่: การ์ดกราเดียนต์ + ตัวหนังสือขาว + เงาโทนฟ้า/ม่วง
-      "bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white " +
-      "border-transparent shadow-[0_14px_40px_rgba(111,134,255,.12),0_6px_16px_rgba(17,24,39,.08)]",
+      "bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white border-transparent shadow-[0_14px_40px_rgba(111,134,255,.12),0_6px_16px_rgba(17,24,39,.08)]",
   };
 
   return (
@@ -58,7 +52,6 @@ Card.Header = function CardHeader(props) {
       {...props}
       className={clsx(
         "border-b border-[var(--card-border)]/70",
-        // ถ้าเป็นการ์ดกราเดียนต์ ให้เส้นขอบโปร่งขาวเล็กน้อย
         "[&_.__gradient_&]:border-white/20",
         props.className
       )}
@@ -82,3 +75,5 @@ Card.Footer = function CardFooter(props) {
     />
   );
 };
+
+export default Card;

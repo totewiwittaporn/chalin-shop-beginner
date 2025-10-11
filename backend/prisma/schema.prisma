@@ -1,13 +1,20 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-// ===== Enums =====
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// ===== Enums =====
 enum Role { ADMIN STAFF CONSIGNMENT QUOTE_VIEWER }
 enum DocKind { QUOTE INVOICE RECEIPT DELIVERY CONSALE }
 enum DocStatus { DRAFT ISSUED PARTIAL PAID SHIPPED CANCELLED }
 enum PartnerStatus { ACTIVE INACTIVE }
 
-// ===== Core =====
+/// ===== Core =====
 model Branch {
   id        Int       @id @default(autoincrement())
   code      String    @unique
@@ -23,25 +30,25 @@ model Branch {
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  email      String    @unique
+  id         Int        @id @default(autoincrement())
+  email      String     @unique
   password   String
   name       String?
   role       Role
   branchId   Int?
   partnerId  Int?
-  branch     Branch?   @relation(fields: [branchId], references: [id])
+  branch     Branch?    @relation(fields: [branchId], references: [id])
   partner    ConsignmentPartner? @relation(fields: [partnerId], references: [id])
   documents  Document[] @relation("CreatedDocuments")
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   @@index([role])
   @@index([branchId])
   @@index([partnerId])
 }
 
-// ===== Catalog =====
+/// ===== Catalog =====
 model ProductType {
   id        Int       @id @default(autoincrement())
   name      String    @unique
@@ -56,8 +63,8 @@ model Product {
   name          String
   productTypeId Int?
   productType   ProductType? @relation(fields: [productTypeId], references: [id])
-  costPrice     Decimal   @db.Decimal(12,2)
-  salePrice     Decimal   @db.Decimal(12,2)
+  costPrice     Decimal   @db.Decimal(12, 2)
+  salePrice     Decimal   @db.Decimal(12, 2)
   branchId      Int?
   branch        Branch?   @relation(fields: [branchId], references: [id])
   items         DocumentItem[]
@@ -71,31 +78,31 @@ model Product {
   @@index([productTypeId])
 }
 
-// ===== Documents =====
+/// ===== Documents =====
 model Document {
-  id           Int        @id @default(autoincrement())
-  kind         DocKind
-  status       DocStatus
-  code         String     @unique
-  issueDate    DateTime
-  branchId     Int?
-  branch       Branch?    @relation(fields: [branchId], references: [id])
-  createdById  Int?
-  creator      User?      @relation("CreatedDocuments", fields: [createdById], references: [id])
-  partnerId    Int?       // only for CONSALE
-  partner      ConsignmentPartner? @relation(fields: [partnerId], references: [id])
-  customerName String?
-  customerPhone String?
-  customerEmail String?
-  subTotal     Decimal    @db.Decimal(14,2)
-  discount     Decimal    @db.Decimal(14,2)
-  tax          Decimal    @db.Decimal(14,2)
-  total        Decimal    @db.Decimal(14,2)
-  commissionRate Decimal? @db.Decimal(5,2)
-  note         String?
-  items        DocumentItem[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id             Int        @id @default(autoincrement())
+  kind           DocKind
+  status         DocStatus
+  code           String     @unique
+  issueDate      DateTime
+  branchId       Int?
+  branch         Branch?    @relation(fields: [branchId], references: [id])
+  createdById    Int?
+  creator        User?      @relation("CreatedDocuments", fields: [createdById], references: [id])
+  partnerId      Int?       // only for CONSALE
+  partner        ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+  customerName   String?
+  customerPhone  String?
+  customerEmail  String?
+  subTotal       Decimal    @db.Decimal(14, 2)
+  discount       Decimal    @db.Decimal(14, 2)
+  tax            Decimal    @db.Decimal(14, 2)
+  total          Decimal    @db.Decimal(14, 2)
+  commissionRate Decimal?   @db.Decimal(5, 2)
+  note           String?
+  items          DocumentItem[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@index([kind])
   @@index([status])
@@ -115,9 +122,9 @@ model DocumentItem {
   barcode     String?
   displayName String?
   displayCode String?
-  qty         Decimal   @db.Decimal(12,2)
-  unitPrice   Decimal   @db.Decimal(12,2)
-  total       Decimal   @db.Decimal(14,2)
+  qty         Decimal   @db.Decimal(12, 2)
+  unitPrice   Decimal   @db.Decimal(12, 2)
+  total       Decimal   @db.Decimal(14, 2)
   categoryId  Int?
   category    ConsignmentCategory? @relation(fields: [categoryId], references: [id])
   createdAt   DateTime  @default(now())
@@ -128,7 +135,7 @@ model DocumentItem {
   @@index([categoryId])
 }
 
-// ===== Consignment =====
+/// ===== Consignment =====
 model ConsignmentPartner {
   id             Int        @id @default(autoincrement())
   code           String?    @unique
@@ -136,7 +143,7 @@ model ConsignmentPartner {
   phone          String?
   email          String?
   address        String?
-  commissionRate Decimal?   @db.Decimal(5,2)
+  commissionRate Decimal?   @db.Decimal(5, 2)
   status         PartnerStatus @default(ACTIVE)
   branchId       Int?
   branch         Branch?    @relation(fields: [branchId], references: [id])
@@ -152,15 +159,15 @@ model ConsignmentPartner {
 }
 
 model ConsignmentInventory {
-  id          Int       @id @default(autoincrement())
-  partnerId   Int
-  productId   Int
-  qtyOnHand   Decimal   @db.Decimal(12,2)
-  price       Decimal?  @db.Decimal(12,2) // consignmentPrice
-  partner     ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         Int       @id @default(autoincrement())
+  partnerId  Int
+  productId  Int
+  qtyOnHand  Decimal   @db.Decimal(12, 2)
+  price      Decimal?  @db.Decimal(12, 2) // consignmentPrice
+  partner    ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@unique([partnerId, productId])
   @@index([productId])
@@ -171,7 +178,7 @@ model ConsignmentCategory {
   partnerId Int
   code      String
   name      String
-  price     Decimal   @db.Decimal(12,2)
+  price     Decimal   @db.Decimal(12, 2)
   partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   maps      ConsignmentCategoryMap[]
   items     DocumentItem[]
@@ -184,15 +191,15 @@ model ConsignmentCategory {
 }
 
 model ConsignmentCategoryMap {
-  id        Int       @id @default(autoincrement())
-  partnerId Int
+  id         Int       @id @default(autoincrement())
+  partnerId  Int
   categoryId Int
-  productId Int
-  partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  category  ConsignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  productId  Int
+  partner    ConsignmentPartner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category   ConsignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product    Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@unique([partnerId, productId])
   @@index([categoryId])
