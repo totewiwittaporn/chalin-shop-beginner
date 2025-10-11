@@ -1,209 +1,200 @@
-generator client {
-  provider = "prisma-client-js"
-}
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
-}
+// ===== Enums =====
+enum Role { ADMIN STAFF CONSIGNMENT QUOTE_VIEWER }
+enum DocKind { QUOTE INVOICE RECEIPT DELIVERY CONSALE }
+enum DocStatus { DRAFT ISSUED PARTIAL PAID SHIPPED CANCELLED }
+enum PartnerStatus { ACTIVE INACTIVE }
 
-enum Role {
-  ADMIN
-  STAFF
-  CONSIGNMENT
-  QUOTE_VIEWER
+// ===== Core =====
+model Branch {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  users     User[]
+  products  Product[]
+  documents Document[]
+  partners  ConsignmentPartner[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([name])
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  name     String
-  role     Role    @default(QUOTE_VIEWER)
-  branchId Int?
-  branch   Branch? @relation(fields: [branchId], references: [id])
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  password   String
+  name       String?
+  role       Role
+  branchId   Int?
+  partnerId  Int?
+  branch     Branch?   @relation(fields: [branchId], references: [id])
+  partner    ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+  documents  Document[] @relation("CreatedDocuments")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  // 🔁 back-relations (ใหม่)
-  transfersCreated       Transfer[]       @relation("TransferCreatedBy")
-  consignReceiptsCreated ConsignReceipt[] @relation("ConsignReceiptCreatedBy")
-  consignReturnsCreated  ConsignReturn[]  @relation("ConsignReturnCreatedBy")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([role])
+  @@index([branchId])
+  @@index([partnerId])
 }
 
-model Branch {
-  id                Int     @id @default(autoincrement())
-  code              String  @unique
-  name              String
-  address           String?
-  commissionPercent Float?
-
-  users User[]
-
-  // 🔁 back-relations (ใหม่)
-  transfersFrom    Transfer[]      @relation("TransfersFromBranch")
-  consignReturnsIn ConsignReturn[] @relation("ReturnsToBranch")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
+// ===== Catalog =====
 model ProductType {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
-  products Product[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Product {
-  id            Int         @id @default(autoincrement())
-  sku           String      @unique
+  id            Int       @id @default(autoincrement())
+  barcode       String    @unique
   name          String
-  basePrice     Decimal     @db.Decimal(10, 2)
-  productTypeId Int
-  productType   ProductType @relation(fields: [productTypeId], references: [id])
+  productTypeId Int?
+  productType   ProductType? @relation(fields: [productTypeId], references: [id])
+  costPrice     Decimal   @db.Decimal(12,2)
+  salePrice     Decimal   @db.Decimal(12,2)
+  branchId      Int?
+  branch        Branch?   @relation(fields: [branchId], references: [id])
+  items         DocumentItem[]
+  maps          ConsignmentCategoryMap[]
+  inventories   ConsignmentInventory[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  // 🔁 back-relations (ใหม่)
-  transferLines       TransferLine[]
-  consignReceiptLines ConsignReceiptLine[]
-  consignReturnLines  ConsignReturnLine[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([name])
+  @@index([branchId])
+  @@index([productTypeId])
 }
 
-//===================== CONSIGNMENT CORE =====================//
-
-enum TransferStatus {
-  DRAFT
-  SENT // โอนออกแล้ว รอร้านรับ
-  PARTIAL // ร้านรับบางส่วน
-  RECEIVED // ร้านรับครบ
-  CANCELLED
-}
-
-model ConsignmentShop {
-  id      Int     @id @default(autoincrement())
-  code    String  @unique
-  name    String
-  address String?
-
-  // โอนเข้าร้าน
-  transfersTo Transfer[]       @relation("TransferToShop")
-  // ใบรับสินค้าของร้าน (เพิ่ม shopId ใน ConsignReceipt เพื่อผูกกลับ)
-  receipts    ConsignReceipt[] @relation("ReceiptShop")
-  // ใบส่งคืนของร้าน (มีอยู่แล้วใน ConsignReturn.shop)
-  returns     ConsignReturn[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Transfer {
-  id           Int            @id @default(autoincrement())
-  docNo        String         @unique
-  fromBranchId Int
-  toShopId     Int
-  status       TransferStatus @default(DRAFT)
+// ===== Documents =====
+model Document {
+  id           Int        @id @default(autoincrement())
+  kind         DocKind
+  status       DocStatus
+  code         String     @unique
+  issueDate    DateTime
+  branchId     Int?
+  branch       Branch?    @relation(fields: [branchId], references: [id])
+  createdById  Int?
+  creator      User?      @relation("CreatedDocuments", fields: [createdById], references: [id])
+  partnerId    Int?       // only for CONSALE
+  partner      ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+  customerName String?
+  customerPhone String?
+  customerEmail String?
+  subTotal     Decimal    @db.Decimal(14,2)
+  discount     Decimal    @db.Decimal(14,2)
+  tax          Decimal    @db.Decimal(14,2)
+  total        Decimal    @db.Decimal(14,2)
+  commissionRate Decimal? @db.Decimal(5,2)
   note         String?
-  docDate      DateTime       @default(now())
+  items        DocumentItem[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  // 🧭 ความสัมพันธ์ชัดเจนด้วยชื่อ
-  fromBranch Branch           @relation("TransfersFromBranch", fields: [fromBranchId], references: [id])
-  toShop     ConsignmentShop  @relation("TransferToShop", fields: [toShopId], references: [id])
-  lines      TransferLine[]
-  receipts   ConsignReceipt[]
-
-  createdById Int?
-  createdBy   User? @relation("TransferCreatedBy", fields: [createdById], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([kind])
+  @@index([status])
+  @@index([branchId])
+  @@index([createdById])
+  @@index([issueDate])
+  @@index([partnerId])
 }
 
-model TransferLine {
-  id          Int     @id @default(autoincrement())
-  transferId  Int
+model DocumentItem {
+  id          Int       @id @default(autoincrement())
+  documentId  Int
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  productId   Int?
+  product     Product?  @relation(fields: [productId], references: [id])
+  name        String    // snapshot
+  barcode     String?
+  displayName String?
+  displayCode String?
+  qty         Decimal   @db.Decimal(12,2)
+  unitPrice   Decimal   @db.Decimal(12,2)
+  total       Decimal   @db.Decimal(14,2)
+  categoryId  Int?
+  category    ConsignmentCategory? @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([documentId])
+  @@index([productId])
+  @@index([categoryId])
+}
+
+// ===== Consignment =====
+model ConsignmentPartner {
+  id             Int        @id @default(autoincrement())
+  code           String?    @unique
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  commissionRate Decimal?   @db.Decimal(5,2)
+  status         PartnerStatus @default(ACTIVE)
+  branchId       Int?
+  branch         Branch?    @relation(fields: [branchId], references: [id])
+  users          User[]
+  documents      Document[]
+  inventories    ConsignmentInventory[]
+  categories     ConsignmentCategory[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([name])
+  @@index([branchId])
+}
+
+model ConsignmentInventory {
+  id          Int       @id @default(autoincrement())
+  partnerId   Int
   productId   Int
-  qtySent     Int
-  qtyReceived Int     @default(0)
-  note        String?
+  qtyOnHand   Decimal   @db.Decimal(12,2)
+  price       Decimal?  @db.Decimal(12,2) // consignmentPrice
+  partner     ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  transfer Transfer @relation(fields: [transferId], references: [id])
-  product  Product  @relation(fields: [productId], references: [id])
-
-  // 🔁 back-relations (ใหม่)
-  receiptLines ConsignReceiptLine[]
+  @@unique([partnerId, productId])
+  @@index([productId])
 }
 
-model ConsignReceipt {
-  id         Int      @id @default(autoincrement())
-  transferId Int
-  docNo      String   @unique
-  receivedAt DateTime @default(now())
-  note       String?
+model ConsignmentCategory {
+  id        Int       @id @default(autoincrement())
+  partnerId Int
+  code      String
+  name      String
+  price     Decimal   @db.Decimal(12,2)
+  partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  maps      ConsignmentCategoryMap[]
+  items     DocumentItem[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  // 🧭 ผูกกลับร้านฝากขายโดยตรง (เพื่อให้ ConsignmentShop.receipts ถูกต้อง)
-  shopId Int
-  shop   ConsignmentShop @relation("ReceiptShop", fields: [shopId], references: [id])
-
-  transfer Transfer             @relation(fields: [transferId], references: [id])
-  lines    ConsignReceiptLine[]
-
-  createdById Int?
-  createdBy   User? @relation("ConsignReceiptCreatedBy", fields: [createdById], references: [id])
-
-  createdAt DateTime @default(now())
+  @@unique([partnerId, code])
+  @@index([partnerId])
+  @@index([name])
 }
 
-model ConsignReceiptLine {
-  id             Int @id @default(autoincrement())
-  receiptId      Int
-  transferLineId Int
-  productId      Int
-  qtyReceived    Int
-
-  receipt      ConsignReceipt @relation(fields: [receiptId], references: [id])
-  transferLine TransferLine   @relation(fields: [transferLineId], references: [id])
-  product      Product        @relation(fields: [productId], references: [id])
-}
-
-enum ReturnStatus {
-  DRAFT
-  SENT
-  CANCELLED
-}
-
-model ConsignReturn {
-  id         Int          @id @default(autoincrement())
-  docNo      String       @unique
-  shopId     Int // ร้านที่ส่งคืน
-  toBranchId Int // สาขาหลักที่รับคืน
-  status     ReturnStatus @default(DRAFT)
-  docDate    DateTime     @default(now())
-  note       String?
-
-  shop     ConsignmentShop     @relation(fields: [shopId], references: [id])
-  toBranch Branch              @relation("ReturnsToBranch", fields: [toBranchId], references: [id])
-  lines    ConsignReturnLine[]
-
-  createdById Int?
-  createdBy   User? @relation("ConsignReturnCreatedBy", fields: [createdById], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model ConsignReturnLine {
-  id        Int @id @default(autoincrement())
-  returnId  Int
+model ConsignmentCategoryMap {
+  id        Int       @id @default(autoincrement())
+  partnerId Int
+  categoryId Int
   productId Int
-  qty       Int
+  partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category  ConsignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  return  ConsignReturn @relation(fields: [returnId], references: [id])
-  product Product       @relation(fields: [productId], references: [id])
+  @@unique([partnerId, productId])
+  @@index([categoryId])
+  @@index([productId])
 }
