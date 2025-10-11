@@ -1,15 +1,12 @@
-// src/routes/auth.routes.js
+// backend/src/routes/auth.routes.js
 import { Router } from "express";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createHash } from "node:crypto";
-import express from "express";
-import authMiddleware from "../middleware/auth";
 
 const prisma = new PrismaClient();
 const router = Router();
-const r = express.Router();
 
 /**
  * POST /api/auth/register
@@ -23,7 +20,9 @@ router.post("/register", async (req, res, next) => {
       data: { email, password: hash, name, role, branchId },
     });
 
-    res.status(201).json({ id: user.id, email: user.email, role: user.role, branchId: user.branchId });
+    res
+      .status(201)
+      .json({ id: user.id, email: user.email, role: user.role, branchId: user.branchId });
   } catch (e) {
     next(e);
   }
@@ -31,7 +30,6 @@ router.post("/register", async (req, res, next) => {
 
 /**
  * POST /api/auth/login
- * NOTE: ห้ามมีโค้ดที่อ้างถึง `user` อยู่นอก handler นี้
  */
 router.post("/login", async (req, res, next) => {
   try {
@@ -75,20 +73,6 @@ router.post("/login", async (req, res, next) => {
   } catch (e) {
     next(e);
   }
-});
-
-// ✅ โปรไฟล์ปัจจุบัน จาก JWT
-r.get("/me", authMiddleware, (req, res) => {
-  // สมมุติว่า authMiddleware ใส่ user ลง req.user
-  // (id, role, name, email, branchId ฯลฯ)
-  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-  res.json(req.user);
-});
-
-// ✅ Logout (JWT เป็นแบบ stateless) — ให้ client ล้าง token ก็พอ
-r.post("/logout", authMiddleware, (_req, res) => {
-  // อาจเพิ่ม blacklist ได้ถ้าคุณใช้ token revoke; ถ้าไม่ใช้ ให้ตอบ 200 อย่างเดียว
-  res.json({ ok: true });
 });
 
 export default router;

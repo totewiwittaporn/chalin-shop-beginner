@@ -10,11 +10,11 @@ export function requireAuth(req, res, next) {
   if (!token) {
     return res.status(401).json({ error: "Unauthorized: no token" });
   }
-  
-  // DEBUG >>>>
-    const preview = `${token.slice(0, 12)}...${token.slice(-12)}`;
-    console.log("[AUTH] incoming token len:", token.length, "preview:", preview);
-    // <<<< DEBUG
+
+  // DEBUG >>>
+  const preview = `${token.slice(0, 12)}...${token.slice(-12)}`;
+  console.log("[AUTH] incoming token len:", token.length, "preview:", preview);
+  // <<< DEBUG
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
@@ -29,7 +29,6 @@ export function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Unauthorized: token expired" });
     }
     if (e.name === "JsonWebTokenError") {
-      // เช่น 'invalid signature', 'jwt malformed'
       return res.status(401).json({ error: "Unauthorized: invalid token" });
     }
     return res.status(401).json({ error: "Unauthorized" });
@@ -40,12 +39,7 @@ export function requireRole(...allowed) {
   return (req, res, next) => {
     if (!req.user?.role) return res.status(401).json({ error: "Unauthorized" });
     const role = String(req.user.role).toUpperCase();
-    if (
-      !allowed
-        .map(String)
-        .map((r) => r.toUpperCase())
-        .includes(role)
-    ) {
+    if (!allowed.map(r => String(r).toUpperCase()).includes(role)) {
       return res.status(403).json({ error: "Forbidden" });
     }
     next();
