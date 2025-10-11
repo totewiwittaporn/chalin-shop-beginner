@@ -1,8 +1,7 @@
-// src/components/layout/MobileMenuDrawer.jsx
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Link } from 'react-router-dom';
-import { MOBILE_GROUPS } from '../../nav.mobile.js'; // ระวังพาธ
+import { MOBILE_GROUPS } from '../../nav.mobile.js'; // ปรับพาธให้ตรงกับไฟล์เมนูคุณ
 
 function Group({ label, items, defaultOpen=false, onItemClick }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -37,32 +36,41 @@ function Group({ label, items, defaultOpen=false, onItemClick }) {
   );
 }
 
-export default function MobileMenuDrawer({ open, onClose, role='ADMIN' }) {
+export default function MobileMenuDrawer({ open, onClose, role='ADMIN', user=null, onLogout }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!open || !mounted) return null;
 
   const groups = MOBILE_GROUPS((role?.toLowerCase?.() || role));
 
+  const name = user?.name || user?.email || 'ผู้ใช้งาน';
+  const sub = [String(user?.role || '').toUpperCase(), user?.branch?.name || user?.branchName]
+    .filter(Boolean).join(' • ');
+
   return createPortal(
     <div className="md:hidden fixed inset-0 z-[9999]">
-      {/* โปร่งใสเมื่อเปิดแฮมเบอร์เกอร์ */}
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-
-      {/* แพแนลรวมเมนู: เพิ่มชั้นพื้นหลังกึ่งทึบ + blur นิดๆ */}
       <div className="absolute top-0 bottom-0 left-0 w-[86%] max-w-[360px] p-3">
         <div className="h-full overflow-y-auto rounded-r-2xl shadow-2xl
                         bg-white/85 dark:bg-slate-900/80 backdrop-blur-md
                         text-gray-900 dark:text-slate-100 p-4">
-          {/* header ด้านในของ Drawer */}
           <div className="flex items-center justify-between mb-2">
-            {/* กดชื่อระบบกลับ Dashboard ได้อีกทาง (ซ้ำกับบน navbar แต่มีไว้ใน Drawer ด้วยกรณีสกอร์ลลงมาไกล) */}
             <Link to="/" onClick={onClose} className="font-semibold">Chalin Shop</Link>
-            <button className="btn btn-ghost" onClick={onClose} aria-label="close">✕</button>
+            <button className="px-3 py-2 rounded-xl hover:bg-black/5" onClick={onClose} aria-label="close">✕</button>
           </div>
+
+          <div className="flex items-center gap-3 mb-3 p-3 rounded-xl border border-black/10 bg-white/60">
+            <div className="size-10 grid place-items-center rounded-xl bg-white border border-black/10 font-semibold">
+              {(name?.[0] || 'U').toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{name}</div>
+              <div className="text-xs opacity-70 truncate">{sub || 'GUEST'}</div>
+            </div>
+          </div>
+
           <div className="h-px bg-black/10 dark:bg-white/10 mb-3" />
 
-          {/* กลุ่มเมนู — ลบ Dashboard ออกตามที่ขอ */}
           <div className="grid">
             {groups.map((g, idx) => (
               <Group
@@ -73,6 +81,15 @@ export default function MobileMenuDrawer({ open, onClose, role='ADMIN' }) {
                 onItemClick={onClose}
               />
             ))}
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={() => { onClose?.(); onLogout?.(); }}
+              className="w-full h-11 rounded-xl bg-red-600 text-white text-sm hover:bg-red-700"
+            >
+              ออกจากระบบ
+            </button>
           </div>
         </div>
       </div>

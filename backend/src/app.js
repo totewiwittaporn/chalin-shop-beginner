@@ -7,6 +7,7 @@ import productTypesRoutes from "./routes/productTypes.routes.js";
 import branchesRoutes from "./routes/branches.routes.js";
 import { errorHandler } from "./middleware/error.js";
 import debugRoutes from "./routes/_debug.routes.js";
+import authMeRoutes from "./routes/auth.me.routes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use(express.json());
 
 app.use("/api/_debug", debugRoutes);
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.use("/api/auth", authMeRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/product-types", productTypesRoutes);

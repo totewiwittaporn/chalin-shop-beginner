@@ -1,80 +1,30 @@
-// src/components/layout/Sidebar.jsx
-import { NavLink } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore.js';
-import { NAV_BY_ROLE } from '../../config/nav.js';
-import {
-  LayoutDashboard,
-  Package,
-  Tags,
-  Building2 as Building,
-  Store,
-  Boxes,
-  ShoppingCart as Cart,
-  ArrowLeftRight as Swap,
-  Receipt,
-  FileText,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { NavLink } from "react-router-dom";
+import { MOBILE_GROUPS } from "../../nav.mobile"; // ปรับพาธให้ตรงกับไฟล์เมนูของคุณ
+import { useMemo } from "react";
 
-const ICONS = {
-  Dashboard: LayoutDashboard,
-  Package,
-  Tags,
-  Building,
-  Store,
-  Boxes,
-  Cart,
-  Swap,
-  Receipt,
-  FileText,
-  Settings,
-  Users,
-};
+export default function Sidebar({ user }) {
+  const role = String(user?.role || "GUEST").toLowerCase();
+  const groups = useMemo(() => MOBILE_GROUPS(role), [role]);
 
-function SideLink({ to, label, icon }) {
-  const Icon = icon && ICONS[icon] ? ICONS[icon] : null;
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `flex items-center gap-2 rounded-xl px-3 py-2 text-white/95 ${
-          isActive ? 'bg-white/25 shadow-sm' : 'hover:bg-white/15'
-        }`
-      }
-    >
-      {Icon && <Icon size={18} />}
-      <span className="hidden lg:inline text-sm font-medium">{label}</span>
-    </NavLink>
-  );
-}
-
-export default function Sidebar() {
-  const { user } = useAuthStore();
-  const groups = NAV_BY_ROLE[user?.role] || NAV_BY_ROLE.ADMIN;
+  const itemCls = ({ isActive }) =>
+    "block px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 " +
+    (isActive ? "bg-black/10 dark:bg-white/20 font-semibold" : "");
 
   return (
-    <aside className="hidden md:flex min-h-screen sticky top-0 w-[72px] lg:w-64 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] border-r border-white/20 px-3 lg:px-4 py-4 flex-col gap-3 z-40">
-      <div className="hidden lg:block text-white/95 font-semibold text-lg mb-2 px-1">
-        Chalin Shop
-      </div>
-      <nav className="space-y-3">
-        {groups.map((g, idx) => (
-          <div key={idx}>
-            {g.section && (
-              <div className="hidden lg:block uppercase text-[11px] tracking-wide text-white/80 mb-2">
-                {g.section}
-              </div>
-            )}
-            <div className="grid gap-1">
-              {g.items.map((it) => (
-                <SideLink key={it.to} to={it.to} label={it.label} icon={it.icon} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </nav>
-      <div className="hidden lg:block mt-6 text-[11px] text-white/70 px-1">v0.1 • glass-blue</div>
-    </aside>
+    <div className="panel p-3">
+      <div className="text-sm text-muted px-1 pb-2">เมนู</div>
+      {groups.map((g) => (
+        <div key={g.id} className="mb-2">
+          <div className="text-xs uppercase tracking-wide text-muted px-1 mb-1">{g.label}</div>
+          <nav className="grid gap-1">
+            {g.items.map((it) => (
+              <NavLink key={it.to} to={it.to} className={itemCls}>
+                {it.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      ))}
+    </div>
   );
 }

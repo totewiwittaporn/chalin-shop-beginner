@@ -88,3 +88,49 @@ html, body {
 @media (min-width: 768px) {
   .only-mobile { display: none; }
 }
+
+/* -------- Input (Glass) : อ่านง่ายทุกพื้นหลัง -------- */
+.input-glass {
+  /* ทำพื้นสว่างขึ้นเล็กน้อย และบังคับสีตัวอักษรให้เข้ม */
+  background-color: rgba(255, 255, 255, 0.88);
+  color: var(--ink, #0b1220);
+  caret-color: var(--ink, #0b1220);
+  border: 1px solid var(--card-border, rgba(15,23,42,.08));
+  border-radius: 9999px; /* ถ้าคุณใช้ทรง pill */
+  outline: none;
+  transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+/* โทนตอนโฟกัส: พื้นขาวขึ้นอีกนิด + เงานุ่ม */
+.input-glass:focus {
+  background-color: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px var(--ring-softer, rgba(111,134,255,.18));
+  border-color: rgba(15,23,42,.12);
+}
+
+/* สี placeholder ให้อ่านง่ายแต่ไม่แย่งซีน */
+.input-glass::placeholder {
+  color: rgba(11, 18, 32, 0.55);
+}
+
+/* ป้องกันกรณีถูกสืบทอด text-white มาจากพาเรนต์ (เช่นบนการ์ดกราเดียนต์) */
+.input-glass,
+.input-glass * {
+  color: var(--ink, #0b1220) !important;
+}
+
+/* Chrome/Edge Autofill: บังคับให้ตัวอักษรเข้มและพื้นไม่เหลือง */
+.input-glass:-webkit-autofill,
+.input-glass:-webkit-autofill:hover,
+.input-glass:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0b1220;
+  transition: background-color 9999s ease-out 0s;
+  /* ทำพื้น autofill ดูเนียนเหมือนเดิม */
+  box-shadow: 0 0 0px 1000px rgba(255,255,255,0.95) inset;
+}
+
+/* ถ้าวางบนพื้นกราเดียนต์เข้มมาก ๆ แล้วยังซีด ให้เพิ่มคลาสนี้เสริม */
+.input-contrast {
+  background-color: rgba(255, 255, 255, 0.96);
+  color: #0b1220 !important;
+}
