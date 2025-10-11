@@ -13,7 +13,7 @@ const router = Router();
  */
 router.post("/register", async (req, res, next) => {
   try {
-    const { email, password, name, role = Role.STAFF, branchId = null } = req.body;
+    const { email, password, name, role = Role.QUOTE_VIEWER, branchId = null } = req.body;
 
     const hash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({

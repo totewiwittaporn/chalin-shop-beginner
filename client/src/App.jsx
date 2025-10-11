@@ -44,11 +44,11 @@ function InventoryConsignmentWrapper() {
 }
 
 const routes = [
-  { path: '/', element: <PreAuthLanding /> },
+  { path: '/welcome', element: <PreAuthLanding /> },
   { path: '/login', element: <Login /> },
   { path: '/sign-up', element: <SignUp /> },
   {
-    path: '/app',
+    path: '',
     element: (
       <RequireAuth>
         <RootLayout />
@@ -56,9 +56,9 @@ const routes = [
     ),
     errorElement: <NotFoundPage />,
     children: [
-      { index: true, element: <DashboardPage /> }, // /app
-      { path: 'users', element: <UsersPage /> }, // /app/users
-      { path: 'products', element: <ProductsPage /> }, // /app/products
+      { index: true, element: <DashboardPage /> },
+      { path: 'users', element: <UsersPage /> },
+      { path: 'products', element: <ProductsPage /> },
       { path: 'consignment/categories', element: <ConsignmentCategoriesPage /> },
       { path: 'branches', element: <BranchesPage /> },
       { path: 'consignment-shops', element: <ConsignmentShopsPage /> },
@@ -77,7 +77,7 @@ const routes = [
     ],
   },
   {
-    path: '/app/docs/',
+    path: '/docs/',
     element: (
       <RequireAuth>
         <DocsHome />
