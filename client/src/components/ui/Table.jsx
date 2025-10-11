@@ -1,31 +1,55 @@
-export function Table({ columns = [], data = [] }) {
+// client/src/components/ui/Table.jsx
+export function Root({ children, className = "" }) {
   return (
-    <div className="overflow-x-auto glass">
-      <table className="min-w-full text-sm">
-        <thead>
-          <tr className="text-left text-muted">
-            {columns.map((c) => (
-              <th
-                key={c.key}
-                className="sticky top-0 z-20 bg-surface border-b border-border px-3 py-2 whitespace-nowrap"
-              >
-                {c.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, i) => (
-            <tr key={row.id || i} className="border-t border-border/50">
-              {columns.map((c) => (
-                <td key={c.key} className="px-3 py-2 align-top whitespace-nowrap">
-                  {c.render ? c.render(row[c.key], row) : row[c.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
+    <div className={`overflow-x-auto ${className}`}>
+      <table className="w-full border-separate border-spacing-0">
+        {children}
       </table>
     </div>
   );
 }
+
+export function Head({ children }) {
+  return (
+    <thead className="bg-[rgba(15,23,42,.04)] text-left text-[13px] text-[#0b1220]/80">
+      {children}
+    </thead>
+  );
+}
+
+export function Body({ children, loading = false }) {
+  if (loading) {
+    return (
+      <tbody>
+        <tr>
+          <td colSpan={999} className="text-center py-10 text-muted">กำลังโหลดข้อมูล…</td>
+        </tr>
+      </tbody>
+    );
+  }
+  return <tbody>{children}</tbody>;
+}
+
+export function Tr({ children }) {
+  return <tr className="border-b border-[rgba(15,23,42,.08)] last:border-0">{children}</tr>;
+}
+
+export function Th({ children, className = "" }) {
+  return (
+    <th className={`px-4 py-2 font-medium border-b border-[rgba(15,23,42,.08)] ${className}`}>
+      {children}
+    </th>
+  );
+}
+
+export function Td({ children, className = "", colSpan }) {
+  return (
+    <td className={`px-4 py-2 align-top ${className}`} colSpan={colSpan}>
+      {children}
+    </td>
+  );
+}
+
+// 🔽 default export สำหรับใช้แบบ `import Table from ".../Table"`
+const Table = { Root, Head, Body, Tr, Th, Td };
+export default Table;
