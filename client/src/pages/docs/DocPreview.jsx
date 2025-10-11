@@ -1,4 +1,3 @@
-// src/pages/docs/DocPreview.jsx
 import { useParams } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.js';
 
@@ -39,8 +38,9 @@ export default function DocPreview(){
   return (
     <div className="grid gap-4">
       {/* Action bar (not printed) */}
-      <div className="no-print flex gap-2">
-        <button className="btn" onClick={()=>window.print()}>พิมพ์</button>
+      <div className="toolbar-glass p-3 no-print flex justify-between items-center">
+        <div className="font-medium">ตัวอย่างเอกสาร: {title} • เลขที่ {doc.docNo}</div>
+        <button className="btn-white" onClick={()=>window.print()}>พิมพ์</button>
       </div>
 
       {/* Only this block will be printed */}

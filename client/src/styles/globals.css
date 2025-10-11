@@ -88,28 +88,3 @@ html, body {
 @media (min-width: 768px) {
   .only-mobile { display: none; }
 }
-
-/* === Theme variables (put in globals.css) === */
-:root {
-  /* สีอ้างอิงจากแถบเมนูของคุณ — แก้ให้ตรงกับของจริง */
-  --nav-bg: #0f172a;          /* พื้นหลังเมนู เช่น slate-900 */
-  --nav-fg: #e2e8f0;          /* ตัวอักษรเมนู เช่น slate-200 */
-  --brand:  #38bdf8;          /* สีปุ่ม/แบรนด์ เช่น sky-400 */
-  --accent: #22d3ee;          /* สีไฮไลต์ เช่น cyan-400 */
-
-  /* อนุพันธ์ที่ใช้ในฟอร์ม/การ์ด */
-  --brand-contrast: #0b1220;  /* ตัวอักษรบนปุ่ม brand */
-  --surface: rgba(255,255,255,.08);
-  --surface-border: rgba(255,255,255,.16);
-  --muted: rgba(226,232,240,.8);
-
-  --input-bg: rgba(255,255,255,.95);
-  --input-fg: #0b1220;
-  --placeholder: rgba(15,23,42,.55);
-}
-
-/* (ถ้ามีโหมดมืดแบบเพิ่ม class 'dark' บน <html>) */
-.dark {
-  /* ตัวอย่าง: ปรับค่าในโหมดมืดได้ที่นี่ */
-  /* --surface: rgba(255,255,255,.06); */
-}

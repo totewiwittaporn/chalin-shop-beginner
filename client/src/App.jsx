@@ -31,6 +31,10 @@ import PreAuthLanding from './pages/auth/PreAuthLanding.jsx';
 import Login from './pages/auth/Login.jsx';
 import SignUp from './pages/auth/SignUp.jsx';
 import DashboardRouter from './pages/DashboardRouter.jsx';
+import AdminDashboard from './pages/dashboard/AdminDashboard.jsx';
+import StaffDashboard from './pages/dashboard/StaffDashboard.jsx';
+import ConsignmentDashboard from './pages/dashboard/ConsignmentDashboard.jsx';
+import QuoteViewerWelcome from './pages/viewer/QuoteViewerWelcome.jsx';
 
 import { useAuthStore } from './store/authStore.js';
 function RequireAuth({ children }) {
@@ -55,6 +59,9 @@ const routes = [
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'dashboard/admin', element: <AdminDashboard /> },
+      { path: 'dashboard/staff', element: <StaffDashboard /> },
+      { path: 'dashboard/consignment', element: <ConsignmentDashboard /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'consignment/categories', element: <ConsignmentCategoriesPage /> },
@@ -72,8 +79,11 @@ const routes = [
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/templates', element: <TemplatesSettingsPage /> },
       { path: 'profile', element: <ProfilePage /> },
-    ],
+    ],  
   },
+  
+  { path: '/viewer/welcome', element: <RequireAuth><QuoteViewerWelcome /></RequireAuth> },
+ 
   {
     path: '/docs/',
     element: (
@@ -92,6 +102,7 @@ const routes = [
     ],
   },
 ];
+
 
 const router = createBrowserRouter(routes, routerOptions);
 

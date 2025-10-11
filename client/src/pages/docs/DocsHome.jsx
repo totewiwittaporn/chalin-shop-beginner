@@ -1,4 +1,3 @@
-// src/pages/docs/DocsHome.jsx
 import { Outlet, NavLink } from 'react-router-dom';
 
 export default function DocsHome(){
@@ -6,8 +5,8 @@ export default function DocsHome(){
   const active = ({isActive}) => isActive ? `${link} bg-white/10 font-semibold` : link;
   return (
     <div className="grid md:grid-cols-[220px_1fr] gap-4">
-      <aside className="glass rounded-2xl p-3 sticky top-4 h-fit">
-        <div className="text-sm opacity-70 mb-2">หมวดเอกสาร</div>
+      <aside className="panel p-3 sticky top-4 h-fit">
+        <div className="text-sm text-muted mb-2">หมวดเอกสาร</div>
         <nav className="grid gap-1">
           <NavLink className={active} to="deliveries">ใบส่งสินค้า</NavLink>
           <NavLink className={active} to="consales">ยอดขายฝากขาย</NavLink>
@@ -17,7 +16,7 @@ export default function DocsHome(){
         </nav>
       </aside>
       <main className="min-w-0">
-        <div className="glass rounded-2xl p-4">
+        <div className="panel p-4">
           <Outlet/>
         </div>
       </main>
