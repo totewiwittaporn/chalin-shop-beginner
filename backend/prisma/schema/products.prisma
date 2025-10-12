@@ -26,13 +26,16 @@ model Product {
   branch   Branch? @relation(fields: [branchId], references: [id])
 
   // reverse
-  items       DocumentItem[]
-  maps        ConsignmentCategoryMap[]
-  inventories ConsignmentInventory[]
+  items         DocumentItem[]
+  maps          ConsignmentCategoryMap[]
+  inventories   ConsignmentInventory[]
+  purchaseLines PurchaseLine[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([productTypeId])
   @@index([branchId])
+  @@index([barcode])
+  @@index([name])
 }

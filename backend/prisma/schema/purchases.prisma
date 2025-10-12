@@ -1,0 +1,37 @@
+// ตัวอย่าง purchases.prisma (โครงหลักให้สอดคล้องกับ controller)
+model Purchase {
+  id         Int      @id @default(autoincrement())
+  code       String?
+  supplierId Int
+  branchId   Int
+  date       DateTime @default(now())
+  status     String   @default("PENDING")
+  totalCost  Decimal?
+
+  lines    PurchaseLine[]
+  supplier Supplier       @relation(fields: [supplierId], references: [id])
+  branch   Branch         @relation(fields: [branchId], references: [id])
+
+  receivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status, date])
+  @@index([supplierId])
+  @@index([branchId])
+}
+
+model PurchaseLine {
+  id         Int     @id @default(autoincrement())
+  purchaseId Int
+  productId  Int
+  ordered    Int
+  received   Int     @default(0)
+  costPrice  Decimal @default(0)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+}

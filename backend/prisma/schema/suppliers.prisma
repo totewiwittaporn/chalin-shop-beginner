@@ -1,0 +1,18 @@
+// prisma/suppliers.prisma
+model Supplier {
+  id          Int     @id @default(autoincrement())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  taxId       String?
+  address     String?
+  isActive    Boolean @default(true)
+
+  purchases Purchase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}

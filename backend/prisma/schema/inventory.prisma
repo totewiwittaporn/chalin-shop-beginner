@@ -1,0 +1,66 @@
+
+/// ---------- สรุปคงเหลือสาขา ----------
+model Inventory {
+  id        Int      @id @default(autoincrement())
+  branchId  Int
+  productId Int
+
+  qty       Int      @default(0)  // คงเหลือปัจจุบันของสาขานั้น
+  reserved  Int      @default(0)  // (ถ้ามีระบบจอง/ออเดอร์) เผื่ออนาคต
+  updatedAt DateTime @updatedAt
+
+  // relations
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([branchId, productId])    // 1 สาขา x 1 สินค้า = 1 แถว
+  @@index([productId])
+  @@index([branchId])
+}
+
+/// ---------- สรุปคงเหลือร้านฝากขาย ----------
+model ConsignmentInventory {
+  id                 Int      @id @default(autoincrement())
+  consignmentShopId  Int
+  productId          Int
+
+  qty                Int      @default(0)  // คงเหลือปัจจุบันของร้านฝากขายนั้น
+  updatedAt          DateTime @updatedAt
+
+  // relations
+  consignmentShop    ConsignmentShop @relation(fields: [consignmentShopId], references: [id])
+  product            Product         @relation(fields: [productId], references: [id])
+
+  @@unique([consignmentShopId, productId])  // 1 ร้านฝากขาย x 1 สินค้า = 1 แถว
+  @@index([productId])
+  @@index([consignmentShopId])
+}
+
+/// ---------- (ทางเลือก) เลดเจอร์คุมประวัติ ----------
+model StockLedger {
+  id        Int      @id @default(autoincrement())
+  productId Int
+
+  // ระบุปลายทางที่เคลื่อนไหวแบบยืดหยุ่น (เลือกใส่ทีละประเภท)
+  branchId           Int?    // ถ้าเป็นเคลื่อนไหวฝั่งสาขา
+  consignmentShopId  Int?    // ถ้าเป็นเคลื่อนไหวฝั่งฝากขาย
+
+  qty       Int                 // บวก=เข้า / ลบ=ออก
+  unitCost  Decimal? @db.Decimal(10, 2)
+  type      StockLedgerType
+
+  refTable  String?            // "Purchase" | "ConsignmentTransfer" | ...
+  refId     Int?
+  note      String?
+  createdAt DateTime @default(now())
+
+  product          Product          @relation(fields: [productId], references: [id])
+  branch           Branch?          @relation(fields: [branchId], references: [id])
+  consignmentShop  ConsignmentShop? @relation(fields: [consignmentShopId], references: [id])
+
+  @@index([productId])
+  @@index([branchId])
+  @@index([consignmentShopId])
+  @@index([type])
+  @@index([refTable, refId])
+}

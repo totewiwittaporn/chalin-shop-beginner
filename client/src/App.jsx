@@ -22,6 +22,8 @@ import { BranchesPage, BranchSalesPage, BranchDeliveryPage } from '@/pages/branc
 import ConsignmentShopsPage from '@/pages/consignment/ConsignmentShopsPage';
 import ConsignmentCategoriesPage from "@/pages/consignment/ConsignmentCategoriesPage";
 import ConsignmentCategoryMappingPage from "@/pages/consignment/ConsignmentCategoryMappingPage";
+import PurchasesPage from "@/pages/purchases/PurchasesPage";
+import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 
 // เอกสาร
 import DocsHome from '@/pages/docs/DocsHome';
@@ -60,6 +62,8 @@ export default function App() {
             <Route path="/consignment/shops" element={<ConsignmentShopsPage />} />
             <Route path="/consignment/categories/mapping" element={<ConsignmentCategoryMappingPage />} />
             <Route path="/consignment/categories" element={<ConsignmentCategoriesPage />} />
+            <Route path="/purchases" element={<PurchasesPage />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
 
             <Route path="/docs" element={<DocsHome />}>
               <Route path="deliveries" element={<DeliveryDocs />} />
