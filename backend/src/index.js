@@ -2,13 +2,13 @@ import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import 'dotenv/config'
-import { auth } from "./middleware/auth.js";
-import productsRouter from "./routes/products.js";
-import consignmentCategoriesRouter from "./routes/consignmentCategories.js";
-import documentsRouter from "./routes/documents.js";
+import { auth } from "#/middleware/auth.js";
+import productsRouter from "#/routes/products.js";
+import consignmentCategoriesRouter from "#/routes/consignmentCategories.js";
+import documentsRouter from "#/routes/documents.js";
 
-import usersRouter from "./routes/users.js";
-import salesRouter from "./routes/sales.js";
+import usersRouter from "#/routes/users.js";
+import salesRouter from "#/routes/sales.js";
 
 const app = express();
 app.use(cors());

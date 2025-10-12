@@ -1,6 +1,5 @@
 // prisma/schema/enums.prisma
 
-/// ===== Enums =====
 enum Role {
   ADMIN
   STAFF

@@ -1,7 +1,7 @@
 // backend/src/routes/users.js
 import { Router } from "express";
-import { prisma } from "../lib/prisma.js";
-import { requireRole } from "../middleware/auth.js";
+import { prisma } from "#/lib/prisma.js";
+import { requireRole } from "#/middleware/auth.js";
 
 /**
  * GET /api/users?role=&branchId=&partnerId=&q=&page=&pageSize=

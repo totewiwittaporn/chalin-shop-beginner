@@ -1,20 +1,19 @@
 {
   "name": "chalin-shop-backend",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
+  "private": true,
+  "imports": {
+    "#app/*": "./src/*"
   },
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "prisma:format": "prisma format",
-    "prisma:validate": "prisma validate",
-    "prisma:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:reset": "prisma migrate reset --force",
-    "db:studio": "prisma studio"
+    "prisma:format": "prisma format --schema ./prisma/schema",
+    "prisma:validate": "prisma validate --schema ./prisma/schema",
+    "prisma:generate": "prisma generate --schema ./prisma/schema",
+    "db:push": "prisma db push --schema ./prisma/schema",
+    "db:studio": "prisma studio --schema ./prisma/schema"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -27,7 +26,7 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
+    "nodemon": "^3.1.10",
     "prisma": "^5.22.0"
   }
 }

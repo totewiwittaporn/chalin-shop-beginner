@@ -1,7 +1,7 @@
 // backend/src/routes/sales.js
 import { Router } from "express";
-import { prisma } from "../lib/prisma.js";
-import { requireRole } from "../middleware/auth.js";
+import { prisma } from "#/lib/prisma.js";
+import { requireRole } from "#/middleware/auth.js";
 
 // utilities
 function parseRange(qs) {
@@ -43,64 +43,69 @@ const router = Router();
  * STAFF → จำกัด branchId ของตัวเอง
  * CONSIGNMENT → จำกัด partnerId ของตัวเอง
  */
-router.get("/summary", requireRole("ADMIN", "STAFF", "CONSIGNMENT"), async (req, res) => {
-  try {
-    const { start, end, label } = parseRange(req.query);
+router.get(
+  "/summary",
+  requireRole("ADMIN", "STAFF", "CONSIGNMENT"),
+  async (req, res) => {
+    try {
+      const { start, end, label } = parseRange(req.query);
 
-    const where = {
-      kind: { in: ["INVOICE", "CONSALE"] },
-      status: { in: ["ISSUED", "PAID"] },
-      issueDate: { gte: start, lte: end },
-    };
+      // ใช้ฟิลด์ docDate (ตาม schema) แทน issueDate
+      const where = {
+        kind: { in: ["INVOICE", "CONSALE"] },
+        status: { in: ["ISSUED", "PAID"] },
+        docDate: { gte: start, lte: end },
+      };
 
-    const role = String(req.user.role || "").toUpperCase();
-    if (role === "STAFF" && req.user.branchId) {
-      where.branchId = req.user.branchId;
+      const role = String(req.user.role || "").toUpperCase();
+      if (role === "STAFF" && req.user.branchId) {
+        where.branchId = req.user.branchId;
+      }
+      if (role === "CONSIGNMENT" && req.user.partnerId) {
+        where.partnerId = req.user.partnerId;
+      }
+
+      const docs = await prisma.document.findMany({
+        where,
+        select: { id: true, docDate: true, total: true },
+        orderBy: { docDate: "asc" },
+      });
+
+      const byDate = new Map();
+      for (const d of docs) {
+        const dayKey = truncDateISO(new Date(d.docDate));
+        const entry = byDate.get(dayKey) || { date: dayKey, total: 0, count: 0 };
+        entry.total += Number(d.total || 0);
+        entry.count += 1;
+        byDate.set(dayKey, entry);
+      }
+
+      // เติมวันที่ให้ครบช่วง
+      const days = [];
+      const cursor = new Date(start);
+      cursor.setUTCHours(0, 0, 0, 0);
+      while (cursor <= end) {
+        const key = truncDateISO(cursor);
+        days.push(byDate.get(key) || { date: key, total: 0, count: 0 });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+
+      const total = days.reduce((s, x) => s + x.total, 0);
+      const averagePerDay = days.length ? total / days.length : 0;
+
+      res.json({
+        range: label,
+        from: truncDateISO(start),
+        to: truncDateISO(end),
+        total,
+        averagePerDay,
+        days,
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to summarize sales" });
     }
-    if (role === "CONSIGNMENT" && req.user.partnerId) {
-      where.partnerId = req.user.partnerId;
-    }
-
-    const docs = await prisma.document.findMany({
-      where,
-      select: { id: true, issueDate: true, total: true },
-      orderBy: { issueDate: "asc" },
-    });
-
-    const byDate = new Map();
-    for (const d of docs) {
-      const dayKey = truncDateISO(new Date(d.issueDate));
-      const entry = byDate.get(dayKey) || { date: dayKey, total: 0, count: 0 };
-      entry.total += Number(d.total || 0);
-      entry.count += 1;
-      byDate.set(dayKey, entry);
-    }
-
-    // เติมวันที่ให้ครบช่วง
-    const days = [];
-    const cursor = new Date(start);
-    cursor.setUTCHours(0, 0, 0, 0);
-    while (cursor <= end) {
-      const key = truncDateISO(cursor);
-      days.push(byDate.get(key) || { date: key, total: 0, count: 0 });
-      cursor.setUTCDate(cursor.getUTCDate() + 1);
-    }
-
-    const total = days.reduce((s, x) => s + x.total, 0);
-    const averagePerDay = days.length ? total / days.length : 0;
-
-    res.json({
-      range: label,
-      from: truncDateISO(start),
-      to: truncDateISO(end),
-      total,
-      averagePerDay,
-      days,
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Failed to summarize sales" });
   }
-});
+);
 
 export default router;

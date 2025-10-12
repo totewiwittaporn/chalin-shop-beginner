@@ -19,6 +19,7 @@ import QuoteViewerWelcome from './pages/viewer/QuoteViewerWelcome';
 
 // ส่วนสินค้า
 import ProductsPage from "./pages/products/ProductsPage";
+import BranchesPage from "./pages/BranchesPage";
 
 // เอกสาร
 import DocsHome from './pages/docs/DocsHome';
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="/viewer/welcome" element={<QuoteViewerWelcome />} />
 
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/branches" element={<BranchesPage />} />
 
           <Route path="/docs" element={<DocsHome />}>
             <Route path="deliveries" element={<DeliveryDocs />} />

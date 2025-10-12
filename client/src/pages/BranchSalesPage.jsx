@@ -1,7 +1,6 @@
-// client/src/pages/BranchSalesPage.jsx
 import { useMemo, useState } from 'react';
-import { Card } from '../components/ui/Card.jsx';
-import { Table } from '../components/ui/Table.jsx';
+import Card from '../components/ui/Card.jsx';
+import Table from '../components/ui/Table.jsx';
 import { useDataStore } from '../store/dataStore.js';
 import dayjs from 'dayjs';
 

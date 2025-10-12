@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "#/lib/prisma.js";
 const router = (await import("express")).Router();
 
 // Helper to sum decimals via database or JS

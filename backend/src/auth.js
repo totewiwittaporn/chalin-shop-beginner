@@ -1,6 +1,6 @@
 // backend/src/auth.js (แนวทาง)
 import jwt from "jsonwebtoken";
-import { getUserById } from "./services/user.service.js"; // สมมติว่าคุณมี service นี้
+import { getUserById } from "#/services/user.service.js"; // สมมติว่าคุณมี service นี้
 
 export function authMiddleware(req, res, next) {
   try {

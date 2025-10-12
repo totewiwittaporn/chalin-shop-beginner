@@ -1,11 +1,11 @@
 // prisma/schema/branches.prisma
 
 model Branch {
-  id        Int       @id @default(autoincrement())
-  code      String    @unique         // เช่น PNA-KRBR-GVT
-  name      String
-  address   String?
-  commissionRate Decimal? @db.Decimal(5, 2) // ถ้าใช้ (เช่น %)
+  id             Int      @id @default(autoincrement())
+  code           String   @unique // เช่น PNA-KRBR-GVT
+  name           String
+  address        String?
+  commissionRate Decimal? @db.Decimal(5, 2)
 
   // relations
   users     User[]

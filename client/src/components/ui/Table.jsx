@@ -1,6 +1,6 @@
 // client/src/components/ui/Table.jsx
 
-export function Root({ children, className = "" }) {
+function Root({ children, className = "" }) {
   return (
     <div className={`overflow-x-auto ${className}`}>
       <table className="w-full border-separate border-spacing-0">
@@ -10,7 +10,7 @@ export function Root({ children, className = "" }) {
   );
 }
 
-export function Head({ children }) {
+function Head({ children }) {
   return (
     <thead className="bg-[rgba(15,23,42,.04)] text-left text-[13px] text-[#0b1220]/80">
       {children}
@@ -18,7 +18,7 @@ export function Head({ children }) {
   );
 }
 
-export function Body({ children, loading = false }) {
+function Body({ children, loading = false }) {
   if (loading) {
     return (
       <tbody>
@@ -33,7 +33,7 @@ export function Body({ children, loading = false }) {
   return <tbody>{children}</tbody>;
 }
 
-export function Tr({ children }) {
+function Tr({ children }) {
   return (
     <tr className="border-b border-[rgba(15,23,42,.08)] last:border-0">
       {children}
@@ -41,7 +41,7 @@ export function Tr({ children }) {
   );
 }
 
-export function Th({ children, className = "" }) {
+function Th({ children, className = "" }) {
   return (
     <th
       className={`px-4 py-2 font-medium border-b border-[rgba(15,23,42,.08)] ${className}`}
@@ -51,7 +51,7 @@ export function Th({ children, className = "" }) {
   );
 }
 
-export function Td({ children, className = "", colSpan }) {
+function Td({ children, className = "", colSpan }) {
   return (
     <td className={`px-4 py-2 align-top ${className}`} colSpan={colSpan}>
       {children}
@@ -59,6 +59,17 @@ export function Td({ children, className = "", colSpan }) {
   );
 }
 
-// ✅ รวมเป็นอ็อบเจกต์ Table แล้วส่งออกทั้ง named และ default
-export const Table = { Root, Head, Body, Tr, Th, Td };
+/** Default component + subcomponents */
+function Table({ children, className = "" }) {
+  return <Root className={className}>{children}</Root>;
+}
+
+Table.Root = Root;
+Table.Head = Head;
+Table.Body = Body;
+Table.Tr = Tr;
+Table.Th = Th;
+Table.Td = Td;
+
+export { Table, Root, Head, Body, Tr, Th, Td }; // <-- เพิ่ม named export ของ Table
 export default Table;

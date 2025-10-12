@@ -1,18 +1,17 @@
 // prisma/schema/consignment.prisma
 
 model ConsignmentPartner {
-  id        Int       @id @default(autoincrement())
-  code      String    @unique
-  name      String
-  status    PartnerStatus @default(ACTIVE)
+  id     Int           @id @default(autoincrement())
+  code   String        @unique
+  name   String
+  status PartnerStatus @default(ACTIVE)
 
-  // ความสัมพันธ์
-  shops     ConsignmentCategory[]  @relation("PartnerCategories")
-  maps      ConsignmentCategoryMap[]
+  // ตั้งชื่อ relation ชัดเจน
+  shops       ConsignmentCategory[]    @relation("PartnerCategories")
+  maps        ConsignmentCategoryMap[]
   inventories ConsignmentInventory[]
-  documents Document[]             // เอกสารกับพาร์ทเนอร์นี้ (เช่น CONSIGNMENT SALES)
-
-  users     User[]                 // ผู้ใช้ที่สังกัดพาร์ทเนอร์นี้
+  documents   Document[]
+  users       User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -23,8 +22,11 @@ model ConsignmentCategory {
   partnerId Int
   name      String
 
-  partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  maps      ConsignmentCategoryMap[] @relation("CategoryMaps")
+  // ใส่ชื่อ relation ให้ "ตรงกัน" กับฝั่ง ConsignmentPartner
+  partner ConsignmentPartner @relation("PartnerCategories", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  // ใส่ชื่อ relation ให้ตรงกับคู่ใน ConsignmentCategoryMap
+  maps ConsignmentCategoryMap[] @relation("CategoryMaps")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -33,18 +35,21 @@ model ConsignmentCategory {
 }
 
 model ConsignmentCategoryMap {
-  id         Int       @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   partnerId  Int
   categoryId Int
   productId  Int
 
-  partner    ConsignmentPartner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  category   ConsignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  product    Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  partner ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  // ตั้งชื่อ relation ฝั่งนี้ให้ตรงกับ ConsignmentCategory.maps
+  category ConsignmentCategory @relation("CategoryMaps", fields: [categoryId], references: [id], onDelete: Cascade)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([partnerId, productId])
   @@index([categoryId])
@@ -52,19 +57,18 @@ model ConsignmentCategoryMap {
 }
 
 model ConsignmentInventory {
-  id         Int       @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  partnerId  Int
-  productId  Int
-  // สต็อก + ราคาขายหน้าร้านฝาก
-  qtyOnHand  Decimal   @db.Decimal(12, 2) @default(0)
-  price      Decimal   @db.Decimal(12, 2)
+  partnerId Int
+  productId Int
+  qtyOnHand Decimal @default(0) @db.Decimal(12, 2)
+  price     Decimal @db.Decimal(12, 2)
 
-  partner    ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  product    Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  partner ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  product Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([partnerId, productId])
   @@index([productId])

@@ -1,28 +1,28 @@
 // prisma/schema/documents.prisma
 
 model Document {
-  id          Int       @id @default(autoincrement())
-  kind        DocKind
-  status      DocStatus @default(DRAFT)
+  id     Int       @id @default(autoincrement())
+  kind   DocKind
+  status DocStatus @default(DRAFT)
 
-  docNo       String?   @unique
-  docDate     DateTime  @default(now())
+  docNo   String?  @unique
+  docDate DateTime @default(now())
 
-  branchId    Int?
-  branch      Branch?   @relation(fields: [branchId], references: [id])
+  branchId Int?
+  branch   Branch? @relation(fields: [branchId], references: [id])
 
-  partnerId   Int?
-  partner     ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+  partnerId Int?
+  partner   ConsignmentPartner? @relation(fields: [partnerId], references: [id])
 
   createdById Int?
-  createdBy   User?     @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  createdBy   User? @relation("DocumentCreatedBy", fields: [createdById], references: [id])
 
-  total       Decimal   @db.Decimal(12, 2) @default(0)
+  total Decimal @default(0) @db.Decimal(12, 2)
 
-  items       DocumentItem[]
+  items DocumentItem[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([kind, status])
   @@index([docDate])
@@ -31,19 +31,19 @@ model Document {
 }
 
 model DocumentItem {
-  id          Int       @id @default(autoincrement())
-  documentId  Int
-  productId   Int
+  id         Int @id @default(autoincrement())
+  documentId Int
+  productId  Int
 
-  qty         Decimal   @db.Decimal(12, 2)
-  price       Decimal   @db.Decimal(12, 2)
-  amount      Decimal   @db.Decimal(12, 2)
+  qty    Decimal @db.Decimal(12, 2)
+  price  Decimal @db.Decimal(12, 2)
+  amount Decimal @db.Decimal(12, 2)
 
-  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([documentId])
   @@index([productId])

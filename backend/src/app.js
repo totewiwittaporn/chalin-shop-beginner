@@ -2,13 +2,13 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import authRoutes from "./routes/auth.routes.js";
-import productTypesRoutes from "./routes/productTypes.routes.js";
-import branchesRoutes from "./routes/branches.routes.js";
-import { errorHandler } from "./middleware/error.js";
-import debugRoutes from "./routes/_debug.routes.js";
-import authMeRoutes from "./routes/auth.me.routes.js";
-import productsRoutes from "./routes/products.routes.js";
+import authRoutes from "#/routes/auth.routes.js";
+import productTypesRoutes from "#/routes/productTypes.routes.js";
+import branchesRoutes from "#/routes/branches.routes.js";
+import { errorHandler } from "#/middleware/error.js";
+import debugRoutes from "#/routes/_debug.routes.js";
+import authMeRoutes from "#/routes/auth.me.routes.js";
+import productsRoutes from "#/routes/products.routes.js";
 
 const app = express();
 

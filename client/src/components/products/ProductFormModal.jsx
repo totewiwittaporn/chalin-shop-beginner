@@ -44,7 +44,7 @@ export default function ProductFormModal({ onClose, onCreated }) {
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <Card className="relative w-full max-w-lg p-5">
+      <Card className="relative w-full max-w-lg p-5" variant="gradient">
         <div className="text-lg font-semibold mb-1">เพิ่มสินค้าใหม่</div>
         <div className="text-sm text-muted mb-4">
           ระบุข้อมูลสินค้าพื้นฐานเพื่อบันทึกเข้าสู่ระบบ
@@ -60,7 +60,6 @@ export default function ProductFormModal({ onClose, onCreated }) {
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 placeholder="เช่น 8850999000001"
-                className="w-full"
               />
             </div>
             <div>
@@ -69,7 +68,6 @@ export default function ProductFormModal({ onClose, onCreated }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ชื่อที่แสดง"
-                className="w-full"
               />
             </div>
           </div>
