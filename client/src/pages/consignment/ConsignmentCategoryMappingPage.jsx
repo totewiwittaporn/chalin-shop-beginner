@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
+import BarcodeImage from "@/components/ui/BarcodeImage.jsx";
 import Button from "@/components/ui/Button.jsx";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal.jsx";
 import { listShops } from "@/services/consignmentShops.api.js";
 import { listCategories, listMappedProducts, mapProduct, unmapProduct } from "@/services/consignmentCategories.api.js";
 import api from "@/lib/api";
@@ -22,6 +24,7 @@ export default function ConsignmentCategoryMappingPage() {
   const [mapped, setMapped] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [q, setQ] = useState(qpQ);
+  const [openScan, setOpenScan] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -62,7 +65,8 @@ export default function ConsignmentCategoryMappingPage() {
     const s = q.trim().toLowerCase();
     return (allProducts || [])
       .filter(p => !setMappedIds.has(p.id))
-      .filter(p => !s || (p.name || "").toLowerCase().includes(s) || (p.sku || "").toLowerCase().includes(s));
+      // ✅ เปลี่ยนเป็น p.barcode แทน p.sku
+      .filter(p => !s || (p.name || "").toLowerCase().includes(s) || (p.barcode || "").toLowerCase().includes(s));
   }, [allProducts, mapped, q]);
 
   async function handleMap(productId) {
@@ -101,7 +105,8 @@ export default function ConsignmentCategoryMappingPage() {
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <input className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
-                  placeholder="ค้นหาสินค้า (ชื่อ/รหัส)" value={q} onChange={(e)=> setQ(e.target.value)} />
+                  placeholder="ค้นหาสินค้า (ชื่อ/บาร์โค้ด)" value={q} onChange={(e)=> setQ(e.target.value)} />
+                <Button kind="white" type="button" onClick={()=> setOpenScan(true)}>สแกน</Button>
               </div>
             </div>
           </Card>
@@ -113,7 +118,7 @@ export default function ConsignmentCategoryMappingPage() {
                 <Table.Root>
                   <Table.Head>
                     <Table.Tr>
-                      <Table.Th>SKU</Table.Th>
+                      <Table.Th>Barcode</Table.Th>
                       <Table.Th>ชื่อสินค้า</Table.Th>
                       <Table.Th className="w-[100px] text-right">เอาออก</Table.Th>
                     </Table.Tr>
@@ -121,7 +126,7 @@ export default function ConsignmentCategoryMappingPage() {
                   <Table.Body>
                     {mapped.map(p => (
                       <Table.Tr key={p.id}>
-                        <Table.Td>{p.sku}</Table.Td>
+                        <Table.Td className="font-mono text-sm"><BarcodeImage value={p.barcode} /></Table.Td>
                         <Table.Td>{p.name}</Table.Td>
                         <Table.Td className="text-right">
                           <Button kind="danger" size="sm" onClick={()=> handleUnmap(p.id)}>เอาออก</Button>
@@ -140,7 +145,7 @@ export default function ConsignmentCategoryMappingPage() {
                 <Table.Root>
                   <Table.Head>
                     <Table.Tr>
-                      <Table.Th>SKU</Table.Th>
+                      <Table.Th>Barcode</Table.Th>
                       <Table.Th>ชื่อสินค้า</Table.Th>
                       <Table.Th className="w-[100px] text-right">เพิ่ม</Table.Th>
                     </Table.Tr>
@@ -148,7 +153,7 @@ export default function ConsignmentCategoryMappingPage() {
                   <Table.Body>
                     {notMapped.map(p => (
                       <Table.Tr key={p.id}>
-                        <Table.Td>{p.sku}</Table.Td>
+                        <Table.Td className="font-mono text-sm"><BarcodeImage value={p.barcode} /></Table.Td>
                         <Table.Td>{p.name}</Table.Td>
                         <Table.Td className="text-right">
                           <Button kind="success" size="sm" onClick={()=> handleMap(p.id)}>เพิ่ม</Button>
@@ -163,6 +168,12 @@ export default function ConsignmentCategoryMappingPage() {
           </div>
         </div>
       </div>
+    
+      <BarcodeScannerModal
+        open={openScan}
+        onClose={() => setOpenScan(false)}
+        onDetected={(code) => { setQ(code); }}
+      />
     </div>
   );
 }

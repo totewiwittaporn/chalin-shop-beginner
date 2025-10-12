@@ -138,10 +138,11 @@ router.get("/partners/:partnerId/categories/:categoryId/products", async (req, r
     const productIds = maps.map((m) => m.productId);
     if (productIds.length === 0) return res.json([]);
 
+    // ✅ แก้ select: ใช้ barcode แทน sku
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       orderBy: { id: "asc" },
-      select: { id: true, sku: true, name: true },
+      select: { id: true, barcode: true, name: true },
     });
     res.json(products);
   } catch (err) { next(err); }

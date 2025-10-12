@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "@/lib/axios"; // axios instance
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Card from "@/components/ui/Card"; // ตอนนี้รองรับ default ได้แล้ว
+import Card from "@/components/ui/Card";
 import Table from "@/components/ui/Table";
+import BarcodeImage from "@/components/ui/BarcodeImage";
 import ProductFormModal from "@/components/products/ProductFormModal";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 
 // util เล็ก ๆ
 const debounce = (fn, ms = 400) => {
@@ -22,28 +24,26 @@ function formatMoney(n) {
   return new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(num);
 }
 
-/**
- * Layout:
- * - หัวการ์ดใช้ gradient เพื่อเน้น filter/action
- * - ตารางอยู่ในการ์ดพื้นขาวเพื่ออ่านง่าย
- * - ปุ่มเชื่อมไปหน้า Mapping พร้อมพา q ปัจจุบันไปด้วย
- */
 export default function ProductsPage() {
-  const [searchParams] = useSearchParams();
-  const initialQ = String(searchParams.get("q") || "");
+  const [sp] = useSearchParams();
+  const initialQ = sp.get("q") || "";
 
-  // คำค้น / modal / loading
   const [q, setQ] = useState(initialQ);
   const [list, setList] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
 
-  // pagination แบบง่าย (ต่อยอดเป็น server-side page ได้)
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  // ดึงข้อมูลสินค้า
+  const [showAdd, setShowAdd] = useState(false);
+  const [openScan, setOpenScan] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+
+  const inputRef = useRef(null);
+
+  // ดึงข้อมูลสินค้า (debounced)
   const fetchProducts = useMemo(
     () =>
       debounce(async (params) => {
@@ -51,72 +51,63 @@ export default function ProductsPage() {
           setLoading(true);
           const res = await api.get("/api/products", {
             params: {
-              q: params.q || "",
-              page: params.page || 1,
+              q: params.q ?? q,
+              page: params.page ?? page,
               pageSize,
             },
           });
-
-          // ✅ รองรับทั้งกรณี BE คืนเป็น array ตรง ๆ หรือเป็น { items, total }
-          const data = res?.data;
-          const items = Array.isArray(data) ? data : data?.items || [];
-          const total = Array.isArray(data)
-            ? data.length
-            : (typeof data?.total === "number" ? data.total : items.length);
-
-          setList(items);
-          setCount(total);
-        } catch (e) {
-          console.error(e);
+          setList(res.data.items || []);
+          setCount(res.data.total || 0);
+        } catch (err) {
+          console.error(err);
         } finally {
           setLoading(false);
         }
-      }, 400),
-    []
+      }, 300),
+    [q, page]
   );
 
   useEffect(() => {
     fetchProducts({ q, page });
   }, [q, page, fetchProducts]);
 
-  // สร้างสินค้าใหม่แล้วรีเฟรช
-  async function handleCreated() {
+  const handleCreated = () => {
     setShowAdd(false);
-    setPage(1);
     fetchProducts({ q, page: 1 });
-  }
+    setPage(1);
+  };
+
+  const handleEdited = () => {
+    setShowEdit(false);
+    fetchProducts({ q, page });
+  };
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
 
   return (
-    <div className="grid gap-4">
-      {/* ส่วนที่ 1: หัวข้อ/ค้นหา/เพิ่มสินค้า */}
-      <Card variant="gradient" className="p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-white/85 text-base md:text-lg font-semibold">
-              จัดการสินค้า
-            </div>
-            <div className="text-white/80 text-xs">
-              ค้นหา / เพิ่มสินค้าใหม่เข้าสู่ระบบ
-            </div>
-          </div>
-          <div className="flex-1 md:max-w-lg flex gap-2">
+    <div className="space-y-4">
+      {/* ส่วนที่ 1: แถบค้นหา + action */}
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-1 items-center gap-2">
             <Input
+              ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="ค้นหาจากชื่อสินค้า หรือบาร์โค้ด…"
               onKeyDown={(e) => e.key === "Enter" && fetchProducts({ q, page: 1 })}
+              placeholder="สแกน/พิมพ์บาร์โค้ด หรือ ชื่อสินค้า..."
             />
+            <Button type="button" kind="white" onClick={() => setOpenScan(true)}>
+              สแกน
+            </Button>
             {/* ปุ่มไปหน้า Mapping พร้อม q */}
             <Link to={`/consignment/categories/mapping?q=${encodeURIComponent(q)}`}>
-              <Button kind="editor" type="button">จับคู่กับหมวด (Consignment)</Button>
+              <Button kind="editor">จับคู่หมวดจากคำค้น</Button>
             </Link>
           </div>
+
           <div className="flex items-center gap-2">
-            <Button kind="success" type="button" onClick={() => setShowAdd(true)}>
-              + เพิ่มสินค้า
-            </Button>
+            <Button onClick={() => setShowAdd(true)}>เพิ่มสินค้า</Button>
           </div>
         </div>
       </Card>
@@ -124,9 +115,7 @@ export default function ProductsPage() {
       {/* ส่วนที่ 2: ตารางสินค้า */}
       <Card className="p-0 overflow-hidden">
         <div className="px-4 pt-3 pb-2">
-          <div className="text-sm text-muted">
-            พบทั้งหมด {count.toLocaleString()} รายการ
-          </div>
+          <div className="text-sm text-muted">พบทั้งหมด {count.toLocaleString()} รายการ</div>
         </div>
 
         <Table>
@@ -136,24 +125,46 @@ export default function ProductsPage() {
               <Table.Th>ชื่อสินค้า</Table.Th>
               <Table.Th className="w-[150px] text-right">ราคาซื้อ</Table.Th>
               <Table.Th className="w-[150px] text-right">ราคาขาย</Table.Th>
-              <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
+              <Table.Th className="w-[200px] text-right">เครื่องมือ</Table.Th>
             </Table.Tr>
           </Table.Head>
+
           <Table.Body loading={loading}>
             {list.map((p) => (
               <Table.Tr key={p.id}>
-                <Table.Td className="font-mono text-sm">{p.barcode}</Table.Td>
+                <Table.Td className="font-mono text-sm">
+                  <BarcodeImage value={p.barcode} />
+                </Table.Td>
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td className="text-right">{formatMoney(p.costPrice)}</Table.Td>
                 <Table.Td className="text-right">{formatMoney(p.salePrice)}</Table.Td>
                 <Table.Td className="text-right">
-                  {/* ปุ่มจับคู่รายบรรทัด ส่ง q=barcode หรือชื่อ */}
-                  <Link to={`/consignment/categories/mapping?q=${encodeURIComponent(p.barcode || p.name || "")}`}>
-                    <Button kind="editor" size="sm">จับคู่หมวด</Button>
-                  </Link>
+                  <div className="inline-flex items-center gap-2">
+                    <Button
+                      kind="white"
+                      size="sm"
+                      onClick={() => {
+                        setEditingProduct(p);
+                        setShowEdit(true);
+                      }}
+                    >
+                      แก้ไข
+                    </Button>
+                    {/* ปุ่มจับคู่รายบรรทัด ส่ง q=barcode หรือชื่อ */}
+                    <Link
+                      to={`/consignment/categories/mapping?q=${encodeURIComponent(
+                        p.barcode || p.name || ""
+                      )}`}
+                    >
+                      <Button kind="editor" size="sm">
+                        จับคู่หมวด
+                      </Button>
+                    </Link>
+                  </div>
                 </Table.Td>
               </Table.Tr>
             ))}
+
             {!loading && list.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={5} className="text-center text-muted py-10">
@@ -164,15 +175,14 @@ export default function ProductsPage() {
           </Table.Body>
         </Table>
 
-        {/* pagination ง่าย ๆ */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[rgba(15,23,42,.08)] bg-white/60">
-          <div className="text-xs text-muted">
-            หน้า {page}/{totalPages}
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="text-sm text-muted">
+            หน้า {page} / {totalPages}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Button
               kind="white"
-              type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -180,7 +190,6 @@ export default function ProductsPage() {
             </Button>
             <Button
               kind="white"
-              type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
@@ -190,13 +199,32 @@ export default function ProductsPage() {
         </div>
       </Card>
 
-      {/* Modal เพิ่มสินค้า */}
-      {showAdd && (
+      {/* Modal: แก้ไขสินค้า */}
+      {showEdit && (
         <ProductFormModal
-          onClose={() => setShowAdd(false)}
-          onCreated={handleCreated}
+          initial={editingProduct}
+          mode="edit"
+          onClose={() => setShowEdit(false)}
+          onSaved={handleEdited}
+          onUpdated={handleEdited}
         />
       )}
+
+      {/* Modal: เพิ่มสินค้า */}
+      {showAdd && (
+        <ProductFormModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+      )}
+
+      {/* Modal: สแกนบาร์โค้ด */}
+      <BarcodeScannerModal
+        open={openScan}
+        onClose={() => setOpenScan(false)}
+        onDetected={(code) => {
+          setQ(code);
+          fetchProducts({ q: code, page: 1 });
+          inputRef.current?.focus();
+        }}
+      />
     </div>
   );
 }
