@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
 import Button from "@/components/ui/Button.jsx";
@@ -7,22 +8,29 @@ import { listCategories, listMappedProducts, mapProduct, unmapProduct } from "@/
 import api from "@/lib/api";
 
 export default function ConsignmentCategoryMappingPage() {
+  const [searchParams] = useSearchParams();
+  const qpPartnerId = Number(searchParams.get("partnerId") || 0);
+  const qpCategoryId = Number(searchParams.get("categoryId") || 0);
+  const qpQ = String(searchParams.get("q") || "");
+
   const [partners, setPartners] = useState([]);
-  const [partnerId, setPartnerId] = useState(null);
+  const [partnerId, setPartnerId] = useState(qpPartnerId || null);
 
   const [categories, setCategories] = useState([]);
-  const [categoryId, setCategoryId] = useState(null);
+  const [categoryId, setCategoryId] = useState(qpCategoryId || null);
 
   const [mapped, setMapped] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(qpQ);
 
   useEffect(() => {
     (async () => {
       const shops = await listShops();
       setPartners(shops || []);
-      const pid = shops?.[0]?.id || null;
-      setPartnerId(pid);
+      if (!qpPartnerId) {
+        const pid = shops?.[0]?.id || null;
+        setPartnerId(pid);
+      }
     })();
   }, []);
 
@@ -31,11 +39,14 @@ export default function ConsignmentCategoryMappingPage() {
     (async () => {
       const cats = await listCategories(partnerId);
       setCategories(cats || []);
-      setCategoryId(cats?.[0]?.id || null);
-      // ดึงสินค้าทั้งหมด (เพื่อให้เลือก map ได้)
+      if (!qpCategoryId) {
+        setCategoryId(cats?.[0]?.id || null);
+      }
+      // สินค้าทั้งหมด (เพื่อเลือกไป map)
       const p = await api.get("/api/products", { params: { take: 1000 } });
       setAllProducts(p.data?.items || p.data || []);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partnerId]);
 
   useEffect(() => {
@@ -70,17 +81,28 @@ export default function ConsignmentCategoryMappingPage() {
       <div className="w-full rounded-2xl p-4 sm:p-6 md:p-8" style={{ background: "#f4f7ff" }}>
         <div className="grid gap-6">
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
-            <div className="grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] gap-3 items-center">
-              <select className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
-                value={partnerId || ""} onChange={(e)=> setPartnerId(Number(e.target.value) || null)}>
-                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <select className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
-                value={categoryId || ""} onChange={(e)=> setCategoryId(Number(e.target.value) || null)}>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <input className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
-                placeholder="ค้นหาสินค้า (ชื่อ/รหัส)" value={q} onChange={(e)=> setQ(e.target.value)} />
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <Link to="/consignment/shops"><Button kind="danger">เลือกร้าน</Button></Link>
+                {partnerId && (
+                  <Link to={`/consignment/categories?partnerId=${partnerId}`}>
+                    <Button kind="editor">จัดการหมวด</Button>
+                  </Link>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[auto_auto_1fr] gap-3 items-center">
+                <select className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
+                  value={partnerId || ""} onChange={(e)=> setPartnerId(Number(e.target.value) || null)}>
+                  {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
+                  value={categoryId || ""} onChange={(e)=> setCategoryId(Number(e.target.value) || null)}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <input className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 text-slate-900"
+                  placeholder="ค้นหาสินค้า (ชื่อ/รหัส)" value={q} onChange={(e)=> setQ(e.target.value)} />
+              </div>
             </div>
           </Card>
 

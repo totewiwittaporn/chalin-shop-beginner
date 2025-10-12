@@ -1,6 +1,6 @@
-// backend/src/routes/auth.me.routes.js
+// backend/src/routes/auth/auth.me.routes.js
 import { Router } from "express";
-import { prisma } from "#app/lib/prisma.js";
+import prisma from "#app/lib/prisma.js";        // ✅ แก้เป็น default import
 import { requireAuth } from "#app/middleware/auth.js";
 
 const router = Router();
@@ -20,8 +20,8 @@ router.get("/me", requireAuth, async (req, res, next) => {
         branchId: true,
         partnerId: true,
         createdAt: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
 
     if (!user) return res.status(401).json({ error: "Unauthorized" });

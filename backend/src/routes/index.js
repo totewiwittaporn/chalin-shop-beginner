@@ -11,7 +11,7 @@ import branchesRoutes from "#app/routes/branches/branches.routes.js";
 import usersRoutes from "#app/routes/users/users.js";
 import salesRoutes from "#app/routes/sales/sales.js";
 
-// Consignment family (บางไฟล์อาจยังไม่มี สร้างตามเฟส)
+// Consignment family
 import consignmentPartnersRoutes from "#app/routes/consignment/consignment.partners.routes.js";
 import consignmentCategoriesRoutes from "#app/routes/consignment/categories.routes.js";
 // import consignmentDeliveriesRoutes from "#app/routes/consignment/deliveries.routes.js";
@@ -33,7 +33,6 @@ export function mountProtected(app) {
   app.use("/api/sales", salesRoutes);
 
   // Consignment
-  app.use("/api/consignment/partners", consignmentPartnersRoutes);
   app.use("/api/consignment/partners", consignmentPartnersRoutes);
   app.use("/api/consignment/categories", consignmentCategoriesRoutes);
   // app.use("/api/consignment/deliveries", consignmentDeliveriesRoutes);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
 import Button from "@/components/ui/Button.jsx";
@@ -116,7 +117,7 @@ export default function ConsignmentShopsPage() {
                     <Table.Th>รหัส</Table.Th>
                     <Table.Th>ชื่อร้าน</Table.Th>
                     <Table.Th>สถานะ</Table.Th>
-                    <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
+                    <Table.Th className="w-[220px] text-right">เครื่องมือ</Table.Th>
                   </Table.Tr>
                 </Table.Head>
                 <Table.Body>
@@ -147,7 +148,15 @@ export default function ConsignmentShopsPage() {
                             {r.status}
                           </span>
                         </Table.Td>
-                        <Table.Td className="text-right">
+                        <Table.Td className="text-right flex gap-2 justify-end">
+                          {/* ไปหน้าหมวดของร้าน */}
+                          <Link to={`/consignment/categories?partnerId=${r.id}`}>
+                            <Button kind="editor" size="sm" className="px-2 py-1">หมวดของร้าน</Button>
+                          </Link>
+                          {/* ไปหน้า Mapping ของร้านนี้ */}
+                          <Link to={`/consignment/categories/mapping?partnerId=${r.id}`}>
+                            <Button kind="success" size="sm" className="px-2 py-1">จับคู่สินค้า</Button>
+                          </Link>
                           <Button
                             kind="editor"
                             size="sm"

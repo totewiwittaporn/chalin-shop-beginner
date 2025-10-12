@@ -6,7 +6,7 @@ const router = Router();
 /**
  * GET /api/consignment/categories?partnerId=1&q=
  * - รายการหมวดของ partner
- * - q: ค้นหาทั้ง code/name
+ * - q: ค้นหาทั้ง code/name (case-insensitive)
  */
 router.get("/", async (req, res, next) => {
   try {
@@ -32,7 +32,9 @@ router.get("/", async (req, res, next) => {
           : {}),
       },
       orderBy: [{ code: "asc" }, { name: "asc" }],
-      select: { id: true, partnerId: true, code: true, name: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true, partnerId: true, code: true, name: true, createdAt: true, updatedAt: true,
+      },
     });
     res.json(items);
   } catch (err) { next(err); }
@@ -95,7 +97,7 @@ router.put("/:id", async (req, res, next) => {
 
 /**
  * GET /api/consignment/partners/:partnerId/categories
- * - เหมือน GET /categories แต่ใช้ path param
+ * - ดึงหมวดตาม partner (path param)
  */
 router.get("/partners/:partnerId/categories", async (req, res, next) => {
   try {
@@ -114,10 +116,88 @@ router.get("/partners/:partnerId/categories", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/* ------------------- Mapping endpoints ------------------- */
+
 /**
- * ส่วน mapping เหมือนเดิม (ไม่เปลี่ยน) — ถ้าไฟล์คุณมีอยู่แล้วใช้ตามเวอร์ชันล่าสุดที่ผมส่งให้ในรอบก่อน
- * GET /api/consignment/partners/:partnerId/categories/:categoryId/products
- * POST /api/consignment/partners/:partnerId/categories/:categoryId/map
- * DELETE /api/consignment/partners/:partnerId/categories/:categoryId/products/:productId
+ * GET /api/consignment/categories/partners/:partnerId/categories/:categoryId/products
+ * - รายการสินค้าที่ถูก map เข้าหมวดนี้
  */
+router.get("/partners/:partnerId/categories/:categoryId/products", async (req, res, next) => {
+  try {
+    let partnerId = Number(req.params.partnerId || 0);
+    const categoryId = Number(req.params.categoryId || 0);
+    if (req.user?.role === "CONSIGNMENT") {
+      partnerId = Number(req.user.partnerId || 0);
+    }
+    if (!partnerId || !categoryId) return res.status(400).json({ error: "partnerId & categoryId required" });
+
+    const maps = await prisma.consignmentCategoryMap.findMany({
+      where: { partnerId, categoryId },
+      select: { productId: true },
+    });
+    const productIds = maps.map((m) => m.productId);
+    if (productIds.length === 0) return res.json([]);
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      orderBy: { id: "asc" },
+      select: { id: true, sku: true, name: true },
+    });
+    res.json(products);
+  } catch (err) { next(err); }
+});
+
+/**
+ * POST /api/consignment/categories/partners/:partnerId/categories/:categoryId/map
+ * body: { productId } หรือ { productIds: number[] }
+ */
+router.post("/partners/:partnerId/categories/:categoryId/map", async (req, res, next) => {
+  try {
+    let partnerId = Number(req.params.partnerId || 0);
+    const categoryId = Number(req.params.categoryId || 0);
+    const { productId, productIds } = req.body || {};
+    if (req.user?.role === "CONSIGNMENT") {
+      partnerId = Number(req.user.partnerId || 0);
+    }
+    if (!partnerId || !categoryId) return res.status(400).json({ error: "partnerId & categoryId required" });
+
+    const list = Array.isArray(productIds)
+      ? productIds
+      : (productId ? [productId] : []);
+    if (list.length === 0) return res.status(400).json({ error: "productId(s) required" });
+
+    const ops = list.map((pid) =>
+      prisma.consignmentCategoryMap.upsert({
+        where: { partnerId_productId: { partnerId, productId: Number(pid) } },
+        update: { categoryId }, // ย้ายหมวดได้
+        create: { partnerId, categoryId, productId: Number(pid) },
+      })
+    );
+    const results = await prisma.$transaction(ops);
+    res.json({ ok: true, count: results.length });
+  } catch (err) { next(err); }
+});
+
+/**
+ * DELETE /api/consignment/categories/partners/:partnerId/categories/:categoryId/products/:productId
+ */
+router.delete("/partners/:partnerId/categories/:categoryId/products/:productId", async (req, res, next) => {
+  try {
+    let partnerId = Number(req.params.partnerId || 0);
+    const categoryId = Number(req.params.categoryId || 0);
+    const productId = Number(req.params.productId || 0);
+    if (req.user?.role === "CONSIGNMENT") {
+      partnerId = Number(req.user.partnerId || 0);
+    }
+    if (!partnerId || !categoryId || !productId) {
+      return res.status(400).json({ error: "partnerId & categoryId & productId required" });
+    }
+
+    await prisma.consignmentCategoryMap.delete({
+      where: { partnerId_productId: { partnerId, productId } },
+    });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 export default router;

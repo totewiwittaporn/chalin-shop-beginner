@@ -1,4 +1,4 @@
-// backend/src/routes/auth.routes.js
+// backend/src/routes/auth/auth.routes.js
 import { Router } from "express";
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -73,6 +73,16 @@ router.post("/login", async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+/**
+ * POST /api/auth/logout
+ * JWT เป็น stateless ทำลายที่ฝั่งเซิร์ฟเวอร์ไม่ได้ (ถ้าไม่ทำ token blacklist)
+ * เราเพียงตอบ 200 แล้วให้ฝั่ง client ลบ token ออกจาก localStorage/หน่วยความจำ
+ */
+router.post("/logout", async (_req, res) => {
+  // ถ้าคุณอยากเคลียร์คุกกี้ ก็ res.clearCookie(...) ตรงนี้ได้
+  res.json({ ok: true });
 });
 
 export default router;

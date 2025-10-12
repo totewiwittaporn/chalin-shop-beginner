@@ -16,11 +16,12 @@ export async function updateCategory(id, payload) {
   return res.data;
 }
 
-// ----- Mapping (เหมือนเดิม) -----
+// ----- Mapping -----
 export async function listMappedProducts(partnerId, categoryId) {
   const res = await api.get(`/api/consignment/categories/partners/${partnerId}/categories/${categoryId}/products`);
   return res.data;
 }
+
 export async function mapProduct(partnerId, categoryId, productIdOrIds) {
   const payload = Array.isArray(productIdOrIds)
     ? { productIds: productIdOrIds }
@@ -28,6 +29,7 @@ export async function mapProduct(partnerId, categoryId, productIdOrIds) {
   const res = await api.post(`/api/consignment/categories/partners/${partnerId}/categories/${categoryId}/map`, payload);
   return res.data;
 }
+
 export async function unmapProduct(partnerId, categoryId, productId) {
   const res = await api.delete(`/api/consignment/categories/partners/${partnerId}/categories/${categoryId}/products/${productId}`);
   return res.data;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
 import Button from "@/components/ui/Button.jsx";
@@ -7,8 +8,11 @@ import { createCategory, listCategories, updateCategory } from "@/services/consi
 import { Plus, Pencil, Search } from "lucide-react";
 
 export default function ConsignmentCategoriesPage() {
+  const [searchParams] = useSearchParams();
+  const qpPartnerId = Number(searchParams.get("partnerId") || 0);
+
   const [partners, setPartners] = useState([]);
-  const [partnerId, setPartnerId] = useState(null);
+  const [partnerId, setPartnerId] = useState(qpPartnerId || null);
 
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
@@ -27,7 +31,9 @@ export default function ConsignmentCategoriesPage() {
       try {
         const shops = await listShops();
         setPartners(shops || []);
-        setPartnerId(shops?.[0]?.id || null);
+        if (!qpPartnerId) {
+          setPartnerId(shops?.[0]?.id || null);
+        }
       } catch (e) { console.error(e); }
     })();
   }, []);
@@ -94,7 +100,7 @@ export default function ConsignmentCategoriesPage() {
 
           {/* แถว: เลือกร้าน + ค้นหา + เพิ่ม */}
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
-            <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-3 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
               <select
                 className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
                 value={partnerId || ""}
@@ -113,6 +119,10 @@ export default function ConsignmentCategoriesPage() {
                 />
               </div>
 
+              <Link to={`/consignment/categories/mapping?partnerId=${partnerId || ""}`}>
+                <Button kind="editor">จัดการการจับคู่</Button>
+              </Link>
+
               <Button kind="success" onClick={openCreate} leftIcon={<Plus size={18} />}>
                 เพิ่มหมวด
               </Button>
@@ -127,7 +137,7 @@ export default function ConsignmentCategoriesPage() {
                   <Table.Tr>
                     <Table.Th className="w-[140px]">รหัส</Table.Th>
                     <Table.Th>ชื่อหมวด</Table.Th>
-                    <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
+                    <Table.Th className="w-[220px] text-right">เครื่องมือ</Table.Th>
                   </Table.Tr>
                 </Table.Head>
                 <Table.Body>
@@ -150,7 +160,10 @@ export default function ConsignmentCategoriesPage() {
                     <Table.Tr key={r.id}>
                       <Table.Td className="font-mono">{r.code}</Table.Td>
                       <Table.Td>{r.name}</Table.Td>
-                      <Table.Td className="text-right">
+                      <Table.Td className="text-right flex gap-2 justify-end">
+                        <Link to={`/consignment/categories/mapping?partnerId=${partnerId}&categoryId=${r.id}`}>
+                          <Button kind="success" size="sm">จับคู่สินค้ากับหมวดนี้</Button>
+                        </Link>
                         <Button
                           kind="editor"
                           size="sm"
@@ -165,6 +178,12 @@ export default function ConsignmentCategoriesPage() {
                   ))}
                 </Table.Body>
               </Table.Root>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <Link to="/consignment/shops">
+                <Button kind="danger" size="sm">เลือกร้านอื่น</Button>
+              </Link>
             </div>
           </Card>
         </div>

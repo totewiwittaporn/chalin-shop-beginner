@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "@/lib/axios"; // axios instance
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -25,10 +26,14 @@ function formatMoney(n) {
  * Layout:
  * - หัวการ์ดใช้ gradient เพื่อเน้น filter/action
  * - ตารางอยู่ในการ์ดพื้นขาวเพื่ออ่านง่าย
+ * - ปุ่มเชื่อมไปหน้า Mapping พร้อมพา q ปัจจุบันไปด้วย
  */
 export default function ProductsPage() {
+  const [searchParams] = useSearchParams();
+  const initialQ = String(searchParams.get("q") || "");
+
   // คำค้น / modal / loading
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQ);
   const [list, setList] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -96,13 +101,17 @@ export default function ProductsPage() {
               ค้นหา / เพิ่มสินค้าใหม่เข้าสู่ระบบ
             </div>
           </div>
-          <div className="flex-1 md:max-w-lg">
+          <div className="flex-1 md:max-w-lg flex gap-2">
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="ค้นหาจากชื่อสินค้า หรือบาร์โค้ด…"
               onKeyDown={(e) => e.key === "Enter" && fetchProducts({ q, page: 1 })}
             />
+            {/* ปุ่มไปหน้า Mapping พร้อม q */}
+            <Link to={`/consignment/categories/mapping?q=${encodeURIComponent(q)}`}>
+              <Button kind="editor" type="button">จับคู่กับหมวด (Consignment)</Button>
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             <Button kind="success" type="button" onClick={() => setShowAdd(true)}>
@@ -127,6 +136,7 @@ export default function ProductsPage() {
               <Table.Th>ชื่อสินค้า</Table.Th>
               <Table.Th className="w-[150px] text-right">ราคาซื้อ</Table.Th>
               <Table.Th className="w-[150px] text-right">ราคาขาย</Table.Th>
+              <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
             </Table.Tr>
           </Table.Head>
           <Table.Body loading={loading}>
@@ -136,11 +146,17 @@ export default function ProductsPage() {
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td className="text-right">{formatMoney(p.costPrice)}</Table.Td>
                 <Table.Td className="text-right">{formatMoney(p.salePrice)}</Table.Td>
+                <Table.Td className="text-right">
+                  {/* ปุ่มจับคู่รายบรรทัด ส่ง q=barcode หรือชื่อ */}
+                  <Link to={`/consignment/categories/mapping?q=${encodeURIComponent(p.barcode || p.name || "")}`}>
+                    <Button kind="editor" size="sm">จับคู่หมวด</Button>
+                  </Link>
+                </Table.Td>
               </Table.Tr>
             ))}
             {!loading && list.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={4} className="text-center text-muted py-10">
+                <Table.Td colSpan={5} className="text-center text-muted py-10">
                   ไม่พบข้อมูลสินค้า
                 </Table.Td>
               </Table.Tr>
