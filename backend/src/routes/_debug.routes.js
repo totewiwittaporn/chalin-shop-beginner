@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { createHash } from "node:crypto";
 import jwt from "jsonwebtoken";
-import { requireAuth } from "#/middleware/auth.js";
+import { requireAuth } from "#app/middleware/auth.js";
 
 const router = Router();
 

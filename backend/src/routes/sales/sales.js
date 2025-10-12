@@ -1,7 +1,7 @@
 // backend/src/routes/sales.js
 import { Router } from "express";
-import { prisma } from "#/lib/prisma.js";
-import { requireRole } from "#/middleware/auth.js";
+import { prisma } from "#app/lib/prisma.js";
+import { requireRole } from "#app/middleware/auth.js";
 
 // utilities
 function parseRange(qs) {

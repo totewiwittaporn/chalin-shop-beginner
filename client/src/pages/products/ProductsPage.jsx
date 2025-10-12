@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import api from "../../lib/axios"; // axios instance
-import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
-import Card from "../../components/ui/Card"; // ตอนนี้รองรับ default ได้แล้ว
-import Table from "../../components/ui/Table";
-import ProductFormModal from "../../components/products/ProductFormModal";
+import api from "@/lib/axios"; // axios instance
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Card from "@/components/ui/Card"; // ตอนนี้รองรับ default ได้แล้ว
+import Table from "@/components/ui/Table";
+import ProductFormModal from "@/components/products/ProductFormModal";
 
 // util เล็ก ๆ
 const debounce = (fn, ms = 400) => {

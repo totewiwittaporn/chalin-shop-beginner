@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
 import Button from "@/components/ui/Button.jsx";
-import { Pencil, Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import { getBranches, createBranch, updateBranch } from "@/services/branches.api.js";
 import { useAuthStore } from "@/store/authStore.js";
 
@@ -45,11 +45,11 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
       onClose={onClose}
       actions={
         <>
-          <Button kind="white" onClick={onClose} disabled={busy}>
+          <Button kind="danger" onClick={onClose} disabled={busy}>
             ยกเลิก
           </Button>
           <Button
-            kind="primary"
+            kind="success"
             loading={busy}
             disabled={!canSave || busy}
             onClick={() =>
@@ -83,9 +83,7 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
         </div>
 
         <div>
-          <label className="block text-sm text-slate-600 mb-1">
-            ชื่อร้านสาขา <span className="text-xs">(เช่น CLS-GVT)</span>
-          </label>
+          <label className="block text-sm text-slate-600 mb-1">ชื่อร้านสาขา</label>
           <input
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
             value={name}
@@ -125,7 +123,6 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
 
 /* ---------- Page ---------- */
 export default function BranchesPage() {
-  // BG เนื้อหา: ขาวอมฟ้านวล ๆ + การ์ดเป็นเกรเดียน
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -139,23 +136,19 @@ export default function BranchesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function run() {
-      setLoading(true);
-      setError("");
+    (async () => {
       try {
+        setLoading(true);
         const data = await getBranches();
-        if (!cancelled) setRows(data || []);
+        if (!cancelled) setRows(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error(e);
-        if (!cancelled) setError(e?.response?.data?.error || "โหลดรายการสาขาไม่สำเร็จ");
+        console.error("[Branches] fetch error:", e);
+        if (!cancelled) setError(e?.response?.data?.error || e.message || "โหลดรายการสาขาไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-    run();
-    return () => {
-      cancelled = true;
-    };
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const filtered = useMemo(() => {
@@ -167,37 +160,6 @@ export default function BranchesPage() {
         (b.name || "").toLowerCase().includes(s)
     );
   }, [rows, q]);
-
-  const columns = [
-    { key: "code", header: "รหัสสาขา" },
-    { key: "name", header: "ชื่อร้านสาขา" },
-    { key: "address", header: "ที่อยู่" },
-    {
-      key: "commissionRate",
-      header: "คอมมิชชั่น (%)",
-      render: (v) =>
-        v === null || v === undefined ? "-" : Number(v).toLocaleString(),
-    },
-    {
-      key: "tools",
-      header: "เครื่องมือ",
-      render: (_, row) => (
-        <div className="flex gap-2">
-          {isAdmin && (
-            <Button
-              kind="white"
-              className="px-2 py-1"
-              title="แก้ไข"
-              onClick={() => setEditing(row)}
-              leftIcon={<Pencil size={16} />}
-            >
-              แก้ไข
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   async function handleCreate(payload) {
     setSaving(true);
@@ -229,20 +191,20 @@ export default function BranchesPage() {
 
   return (
     <div className="min-h-[calc(100vh-140px)] w-full">
-      {/* BG เนื้อหา: ขาวอมฟ้านวล ๆ */}
+      {/* BG เนื้อหา: ขาวอมฟ้านวล */}
       <div className="w-full rounded-2xl p-4 sm:p-6 md:p-8" style={{ background: "#f4f7ff" }}>
         <div className="grid gap-6">
-          {/* ส่วนที่ 1 — ค้นหา + ปุ่มเพิ่ม (การ์ดเกรเดียน) */}
+          {/* ส่วนที่ 1 — ค้นหา + ปุ่มเพิ่ม */}
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
               <input
                 className="w-full rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-white focus:ring-2 focus:ring-white/50"
-                placeholder="ค้นหารหัส/ชื่อร้านสาขา…"
+                placeholder="ค้นหารหัส/ชื่อร้านสาขา..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
               <Button
-                kind="white"
+                kind="success"
                 onClick={() => setCreating(true)}
                 disabled={!isAdmin}
                 title={isAdmin ? "เพิ่มร้านสาขา" : "เฉพาะ ADMIN"}
@@ -253,14 +215,73 @@ export default function BranchesPage() {
             </div>
           </Card>
 
-          {/* ส่วนที่ 2 — ตาราง (การ์ดเกรเดียน + กล่องภายในขาวโปร่ง) */}
+          {/* ส่วนที่ 2 — ตาราง */}
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
-            <div className="rounded-2xl bg-white/95 p-2 sm:p-3 md:p-4">
-              <Table
-                columns={columns}
-                data={filtered.map((b) => ({ ...b, tools: "" }))}
-                loading={loading}
-              />
+            {/* ⬇️ กล่องชั้นใน: บังคับสีตัวอักษร + ธีมตาราง */}
+            <div
+              className={[
+                "rounded-2xl bg-white/95 p-2 sm:p-3 md:p-4",
+                "text-slate-800",
+                // สี header/cell + แถวสลับสี + hover
+                "[&_thead_th]:text-slate-600 [&_thead_th]:font-semibold",
+                "[&_tbody_td]:text-slate-800",
+                "[&_tbody_tr:nth-child(even)_td]:bg-slate-50/60",
+                "[&_tbody_tr:hover_td]:bg-slate-100/60",
+                "overflow-hidden",
+              ].join(" ")}
+            >
+              <Table.Root>
+                <Table.Head>
+                  <Table.Tr>
+                    <Table.Th>รหัสสาขา</Table.Th>
+                    <Table.Th>ชื่อร้านสาขา</Table.Th>
+                    <Table.Th>ที่อยู่</Table.Th>
+                    <Table.Th className="text-right">คอมมิชชั่น (%)</Table.Th>
+                    <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
+                  </Table.Tr>
+                </Table.Head>
+
+                <Table.Body>
+                  {loading && (
+                    <Table.Tr>
+                      <Table.Td colSpan={5}>กำลังโหลดข้อมูล...</Table.Td>
+                    </Table.Tr>
+                  )}
+
+                  {!loading && filtered.length === 0 && (
+                    <Table.Tr>
+                      <Table.Td colSpan={5}>ไม่พบข้อมูล</Table.Td>
+                    </Table.Tr>
+                  )}
+
+                  {!loading &&
+                    filtered.map((b) => (
+                      <Table.Tr key={b.id}>
+                        <Table.Td>{b.code}</Table.Td>
+                        <Table.Td>{b.name}</Table.Td>
+                        <Table.Td className="whitespace-pre-line">{b.address || "-"}</Table.Td>
+                        <Table.Td className="text-right">
+                          {b.commissionRate == null ? "-" : Number(b.commissionRate).toLocaleString()}
+                        </Table.Td>
+                        <Table.Td className="text-right">
+                          {isAdmin && (
+                            <Button
+                              kind="editor"
+                              size="sm"
+                              className="px-2 py-1"
+                              title="แก้ไข"
+                              onClick={() => setEditing(b)}
+                              leftIcon={<Pencil size={16} />}
+                            >
+                              แก้ไข
+                            </Button>
+                          )}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                </Table.Body>
+              </Table.Root>
+
               {error && (
                 <div className="mt-3 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50 p-3">
                   {error}

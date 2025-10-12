@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import api from "../../lib/api";
-import Input from "../../components/ui/Input";
-import Button from "../../components/ui/Button";
-import StatCard from "../../components/ui/StatCard";
-import DeltaPill from "../../components/ui/DeltaPill";
-import { Card } from "../../components/ui/Card";
-import { Table } from "../../components/ui/Table";
+import api from "@/lib/api";
+import Input from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
+import StatCard from "@/components/ui/StatCard";
+import DeltaPill from "@/components/ui/DeltaPill";
+import { Card } from "@/components/ui/Card";
+import { Table } from "@/components/ui/Table";
 
 function HeaderBar({ title, children }) {
   return (

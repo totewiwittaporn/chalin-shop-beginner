@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useDataStore } from '../../store/dataStore.js';
+import { useDataStore } from '@/store/dataStore.js';
 
 function A4({children}) {
   return (

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useDataStore } from '../../store/dataStore.js';
+import { useDataStore } from '@/store/dataStore.js';
 
 export default function QuoteDocs(){
   const { quotes = [], prospects = [] } = useDataStore();

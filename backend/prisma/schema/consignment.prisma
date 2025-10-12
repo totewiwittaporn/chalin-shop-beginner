@@ -18,9 +18,13 @@ model ConsignmentPartner {
 }
 
 model ConsignmentCategory {
-  id        Int    @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   partnerId Int
-  name      String
+
+  /// รหัสหมวด (เช่น SNK, BAG-CL, etc.)
+  code String
+  /// ชื่อหมวด (แสดงผล)
+  name String
 
   // ใส่ชื่อ relation ให้ "ตรงกัน" กับฝั่ง ConsignmentPartner
   partner ConsignmentPartner @relation("PartnerCategories", fields: [partnerId], references: [id], onDelete: Cascade)
@@ -31,6 +35,8 @@ model ConsignmentCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// ไม่ให้ code ซ้ำในร้านเดียวกัน
+  @@unique([partnerId, code])
   @@index([partnerId])
 }
 

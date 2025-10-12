@@ -1,0 +1,27 @@
+/// Prisma schema slice: Quick-billing line items for consignment partners.
+/// ใช้กับกรณีใบวางบิลแบบ "รวดเร็ว" (สรุปยอดเป็นข้อความเดียว + จำนวนเงินรวม)
+/// ไม่แก้ model Document เดิม เพื่อลดผลกระทบไฟล์อื่น ๆ
+
+model DocumentQuickItem {
+  id         Int      @id @default(autoincrement())
+  /// อ้างถึงเอกสารแม่ (ควรเป็น Document.kind = BILLING)
+  documentId Int
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  /// ลำดับบรรทัดในใบวางบิล
+  seq Int @default(1)
+
+  /// ข้อความสรุป (เช่น "ยอดขายสินค้าเดือน กันยายน 2025")
+  summaryText String
+
+  /// ยอดรวมราคาของบรรทัดนี้
+  amount Decimal @db.Decimal(14, 2)
+
+  /// หมายเหตุ (ถ้ามี)
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId], map: "idx_quickitem_document")
+}

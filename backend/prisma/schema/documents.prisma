@@ -21,8 +21,9 @@ model Document {
 
   items DocumentItem[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  DocumentQuickItem DocumentQuickItem[]
 
   @@index([kind, status])
   @@index([docDate])

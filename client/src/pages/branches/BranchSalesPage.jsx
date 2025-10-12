@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import Card from '../components/ui/Card.jsx';
-import Table from '../components/ui/Table.jsx';
-import { useDataStore } from '../store/dataStore.js';
+import Card from '@/components/ui/Card.jsx';
+import Table from '@/components/ui/Table.jsx';
+import { useDataStore } from '@/store/dataStore.js';
 import dayjs from 'dayjs';
 
 export default function BranchSalesPage() {

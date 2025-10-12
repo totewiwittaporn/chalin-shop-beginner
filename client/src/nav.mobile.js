@@ -15,7 +15,7 @@ export const MOBILE_GROUPS = (role = 'admin') => {
       label: 'Shops',
       items: [
         { to: '/branches', label: 'Branches' },
-        { to: '/consignment-shops', label: 'Consignment Shops' },
+        { to: '/consignment/shops', label: 'Consignment Shops' },
         { to: '/inventory', label: 'Inventory' },
         { to: '/inventory/count', label: 'Count Inventory' },
       ],

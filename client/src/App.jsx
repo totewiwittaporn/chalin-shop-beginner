@@ -1,64 +1,75 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-// หน้าไม่ต้องมี Navbar/Sidebar
-import PreAuthLanding from './pages/auth/PreAuthLanding';
-import Login from './pages/auth/Login';
-import SignUp from './pages/auth/SignUp';
+// หน้า public
+import PreAuthLanding from '@/pages/auth/PreAuthLanding';
+import Login from '@/pages/auth/Login';
+import SignUp from '@/pages/auth/SignUp';
 
-// เลย์เอาต์หลัก (มี Navbar + Sidebar)
-import AppShell from './components/layout/AppShell';
+// เลย์เอาต์หลัก (Navbar + Sidebar)
+import AppShell from '@/components/layout/AppShell';
 
-// ตัวจัดเส้นทางไปหน้า dashboard ตาม role
-import DashboardRouter from './pages/DashboardRouter';
+// ตัวจัดเส้นทางไป dashboard ตาม role (router หลักของหน้า dashboard เท่านั้น)
+import DashboardRouter from '@/pages/dashboard/DashboardRouter';
 
-// หน้าหลังล็อกอิน
-import AdminDashboard from './pages/dashboard/AdminDashboard';
-import StaffDashboard from './pages/dashboard/StaffDashboard';
-import ConsignmentDashboard from './pages/dashboard/ConsignmentDashboard';
-import QuoteViewerWelcome from './pages/viewer/QuoteViewerWelcome';
+// หน้าภายใน
+import AdminDashboard from '@/pages/dashboard/AdminDashboard';
+import StaffDashboard from '@/pages/dashboard/StaffDashboard';
+import ConsignmentDashboard from '@/pages/dashboard/ConsignmentDashboard';
+import QuoteViewerWelcome from '@/pages/viewer/QuoteViewerWelcome';
 
-// ส่วนสินค้า
-import ProductsPage from "./pages/products/ProductsPage";
-import BranchesPage from "./pages/BranchesPage";
+import ProductsPage from '@/pages/products/ProductsPage';
+import { BranchesPage, BranchSalesPage, BranchDeliveryPage } from '@/pages/branches';
+import ConsignmentShopsPage from '@/pages/consignment/ConsignmentShopsPage';
+import ConsignmentCategoriesPage from "@/pages/consignment/ConsignmentCategoriesPage";
+import ConsignmentCategoryMappingPage from "@/pages/consignment/ConsignmentCategoryMappingPage";
 
 // เอกสาร
-import DocsHome from './pages/docs/DocsHome';
-import DeliveryDocs from './pages/docs/DeliveryDocs';
-import ConsaleDocs from './pages/docs/ConsaleDocs';
-import InvoiceDocs from './pages/docs/InvoiceDocs';
-import ReceiptDocs from './pages/docs/ReceiptDocs';
-import QuoteDocs from './pages/docs/QuoteDocs';
-import DocPreview from './pages/docs/DocPreview';
+import DocsHome from '@/pages/docs/DocsHome';
+import DeliveryDocs from '@/pages/docs/DeliveryDocs';
+import ConsaleDocs from '@/pages/docs/ConsaleDocs';
+import InvoiceDocs from '@/pages/docs/InvoiceDocs';
+import ReceiptDocs from '@/pages/docs/ReceiptDocs';
+import QuoteDocs from '@/pages/docs/QuoteDocs';
+import DocPreview from '@/pages/docs/DocPreview';
+
+import RequireAuth from '@/components/auth/RequireAuth.jsx';
 
 export default function App() {
   return (
-    <BrowserRouter /* ถ้าโฮสต์บน sub-path (เช่น GitHub Pages) ใส่ basename ให้ตรง */>
+    <BrowserRouter>
       <Routes>
-        {/* ไม่ครอบเลย์เอาต์ */}
+        {/* ===== Public routes (ไม่ต้องล็อกอิน) ===== */}
         <Route path="/" element={<PreAuthLanding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUp />} />
 
-        {/* ครอบด้วย AppShell → Navbar + Sidebar */}
-        <Route element={<AppShell />}>
-          <Route path="/dashboard" element={<DashboardRouter />} />
-          <Route path="/dashboard/admin" element={<AdminDashboard />} />
-          <Route path="/dashboard/staff" element={<StaffDashboard />} />
-          <Route path="/dashboard/consignment" element={<ConsignmentDashboard />} />
+        {/* ===== Protected routes (ต้องมี token) ===== */}
+        <Route element={<RequireAuth />}>
+          <Route element={<AppShell />}>
+            <Route path="/dashboard" element={<DashboardRouter />} />
+            <Route path="/dashboard/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard/staff" element={<StaffDashboard />} />
+            <Route path="/dashboard/consignment" element={<ConsignmentDashboard />} />
 
-          <Route path="/viewer/welcome" element={<QuoteViewerWelcome />} />
+            <Route path="/viewer/welcome" element={<QuoteViewerWelcome />} />
 
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/branches" element={<BranchesPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/branches" element={<BranchesPage />} />
+            <Route path="/branches/sales" element={<BranchSalesPage />} />
+            <Route path="/branches/delivery" element={<BranchDeliveryPage />} />
+            <Route path="/consignment/shops" element={<ConsignmentShopsPage />} />
+            <Route path="/consignment/categories/mapping" element={<ConsignmentCategoryMappingPage />} />
+            <Route path="/consignment/categories" element={<ConsignmentCategoriesPage />} />
 
-          <Route path="/docs" element={<DocsHome />}>
-            <Route path="deliveries" element={<DeliveryDocs />} />
-            <Route path="consales" element={<ConsaleDocs />} />
-            <Route path="invoices" element={<InvoiceDocs />} />
-            <Route path="receipts" element={<ReceiptDocs />} />
-            <Route path="quotes" element={<QuoteDocs />} />
+            <Route path="/docs" element={<DocsHome />}>
+              <Route path="deliveries" element={<DeliveryDocs />} />
+              <Route path="consales" element={<ConsaleDocs />} />
+              <Route path="invoices" element={<InvoiceDocs />} />
+              <Route path="receipts" element={<ReceiptDocs />} />
+              <Route path="quotes" element={<QuoteDocs />} />
+            </Route>
+            <Route path="/docs/:kind/:id" element={<DocPreview />} />
           </Route>
-          <Route path="/docs/:kind/:id" element={<DocPreview />} />
         </Route>
 
         {/* 404 */}

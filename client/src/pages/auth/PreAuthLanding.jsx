@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useAuthStore } from '../../store/authStore';
-import { dashboardPathByRole } from '../../lib/roleRoute';
-import { Card } from '../../components/ui/Card';
-import Input from '../../components/ui/Input';
-import LinkButton from '../../components/ui/LinkButton';
+import { useAuthStore } from '@/store/authStore';
+import { dashboardPathByRole } from '@/lib/roleRoute';
+import { Card } from '@/components/ui/Card';
+import Input from '@/components/ui/Input';
+import LinkButton from '@/components/ui/LinkButton';
 
 export default function PreAuthLanding() {
   const user = useAuthStore(s => s.user);

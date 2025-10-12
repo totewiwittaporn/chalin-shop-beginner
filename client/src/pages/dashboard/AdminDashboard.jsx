@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import api from "../../lib/api";
-import { Card } from "../../components/ui/Card";
-import StatCard from "../../components/ui/StatCard";
-import * as Table from "../../components/ui/Table.jsx"; // ⬅️ ใช้ namespace import
-import Button from "../../components/ui/Button";
+import api from "@/lib/api";
+import { Card } from "@/components/ui/Card";
+import StatCard from "@/components/ui/StatCard";
+import * as Table from "@/components/ui/Table.jsx"; // ⬅️ ใช้ namespace import
+import Button from "@/components/ui/Button";
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../lib/api';
-import { useAuthStore } from '../../store/authStore';
-import { Card } from '../../components/ui/Card';
-import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
-import LinkButton from '../../components/ui/LinkButton';
+import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { Card } from '@/components/ui/Card';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+import LinkButton from '@/components/ui/LinkButton';
 
 export default function Login() {
   const navigate = useNavigate();
