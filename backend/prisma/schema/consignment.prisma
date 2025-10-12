@@ -13,8 +13,9 @@ model ConsignmentPartner {
   documents   Document[]
   users       User[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  StockLedger StockLedger[]
 }
 
 model ConsignmentCategory {
