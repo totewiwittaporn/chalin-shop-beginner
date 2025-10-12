@@ -1,0 +1,24 @@
+// prisma/schema/users.prisma
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  role      Role      @default(STAFF)
+
+  branchId  Int?
+  branch    Branch?   @relation(fields: [branchId], references: [id])
+
+  partnerId Int?                         // ผู้ใช้ที่ผูกกับร้านฝาก
+  partner   ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+
+  // reverse relations จากเอกสารที่ user เป็นคนสร้าง
+  documentsCreated Document[] @relation("DocumentCreatedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([branchId])
+  @@index([partnerId])
+}

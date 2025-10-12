@@ -1,0 +1,71 @@
+// prisma/schema/consignment.prisma
+
+model ConsignmentPartner {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  status    PartnerStatus @default(ACTIVE)
+
+  // ความสัมพันธ์
+  shops     ConsignmentCategory[]  @relation("PartnerCategories")
+  maps      ConsignmentCategoryMap[]
+  inventories ConsignmentInventory[]
+  documents Document[]             // เอกสารกับพาร์ทเนอร์นี้ (เช่น CONSIGNMENT SALES)
+
+  users     User[]                 // ผู้ใช้ที่สังกัดพาร์ทเนอร์นี้
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConsignmentCategory {
+  id        Int    @id @default(autoincrement())
+  partnerId Int
+  name      String
+
+  partner   ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  maps      ConsignmentCategoryMap[] @relation("CategoryMaps")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([partnerId])
+}
+
+model ConsignmentCategoryMap {
+  id         Int       @id @default(autoincrement())
+
+  partnerId  Int
+  categoryId Int
+  productId  Int
+
+  partner    ConsignmentPartner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category   ConsignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product    Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([partnerId, productId])
+  @@index([categoryId])
+  @@index([productId])
+}
+
+model ConsignmentInventory {
+  id         Int       @id @default(autoincrement())
+
+  partnerId  Int
+  productId  Int
+  // สต็อก + ราคาขายหน้าร้านฝาก
+  qtyOnHand  Decimal   @db.Decimal(12, 2) @default(0)
+  price      Decimal   @db.Decimal(12, 2)
+
+  partner    ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  product    Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([partnerId, productId])
+  @@index([productId])
+}

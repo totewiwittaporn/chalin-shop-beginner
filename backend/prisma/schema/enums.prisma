@@ -1,0 +1,31 @@
+// prisma/schema/enums.prisma
+
+/// ===== Enums =====
+enum Role {
+  ADMIN
+  STAFF
+  CONSIGNMENT
+  QUOTE_VIEWER
+}
+
+enum DocKind {
+  QUOTE
+  INVOICE
+  RECEIPT
+  DELIVERY
+  CONSALE
+}
+
+enum DocStatus {
+  DRAFT
+  ISSUED
+  PARTIAL
+  PAID
+  SHIPPED
+  CANCELLED
+}
+
+enum PartnerStatus {
+  ACTIVE
+  INACTIVE
+}
