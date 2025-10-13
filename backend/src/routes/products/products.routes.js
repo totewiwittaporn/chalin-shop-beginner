@@ -105,41 +105,77 @@ r.get(
   requireRole("ADMIN", "STAFF", "CONSIGNMENT"),
   async (req, res, next) => {
     try {
-      const lt = Number(req.query.lt ?? 10);
-      const partnerQuery = req.query.partnerId ? Number(req.query.partnerId) : null;
+      const lt = Math.max(0, Number(req.query.lt ?? 10));  // เกณฑ์ “ใกล้หมด”
+      const take = Math.min(Math.max(1, Number(req.query.take ?? 50)), 200); // จำกัดจำนวน
+      const role = String(req.user.role).toUpperCase();
 
-      let partnerId = partnerQuery;
-      if (String(req.user.role).toUpperCase() === "CONSIGNMENT") {
-        partnerId = req.user.partnerId ?? null;
+      let items = [];
+
+      if (role === "CONSIGNMENT") {
+        // ร้านฝากขาย: ดูสต็อกของ partner ตัวเอง
+        const partnerId = req.user.partnerId ?? null;
+        if (!partnerId) return res.json([]);
+
+        const rows = await prisma.consignmentInventory.findMany({
+          where: { consignmentPartnerId: partnerId, qty: { lte: lt } },
+          include: { product: true },
+          orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
+          take,
+        });
+
+        items = rows.map((r) => ({
+          id: r.productId,
+          name: r.product?.name ?? null,
+          stock: r.qty,                // ปริมาณคงเหลือในฝั่ง consignment
+          location: "CONSIGNMENT",
+          partnerId,
+        }));
+
+      } else if (role === "STAFF" && req.user.branchId) {
+        // พนักงานสาขา: ดูสต็อกของสาขาตัวเอง
+        const branchId = req.user.branchId;
+
+        const rows = await prisma.inventory.findMany({
+          where: { branchId, qty: { lte: lt } },
+          include: { product: true },
+          orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
+          take,
+        });
+
+        items = rows.map((r) => ({
+          id: r.productId,
+          name: r.product?.name ?? null,
+          stock: r.qty,                // คงเหลือของสาขานี้
+          location: "BRANCH",
+          branchId,
+        }));
+
+      } else {
+        // ADMIN: รวมทุกสาขา -> สรุปยอดคงเหลือต่อสินค้า แล้วกรอง <= lt
+        // (หมายเหตุ: ใช้วิธีรวมฝั่งแอพเพื่อความเรียบง่าย/ปลอดภัย)
+        const rows = await prisma.inventory.findMany({
+          where: { qty: { lte: lt } }, // ดึงเฉพาะที่ต่ำกว่าเกณฑ์เพื่อลดปริมาณข้อมูล
+          include: { product: true },
+          orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
+          take: 1000, // ดึงกว้างหน่อยเพื่อสรุป แล้วค่อย slice ภายหลัง
+        });
+
+        const sumByProduct = new Map();
+        for (const r of rows) {
+          const key = r.productId;
+          const cur = sumByProduct.get(key) || { id: r.productId, name: r.product?.name ?? null, stock: 0 };
+          cur.stock += Number(r.qty || 0);
+          sumByProduct.set(key, cur);
+        }
+
+        items = Array.from(sumByProduct.values())
+          .filter((it) => it.stock <= lt)
+          .sort((a, b) => a.stock - b.stock || String(a.name).localeCompare(String(b.name)))
+          .slice(0, take);
       }
 
-      const where = {
-        qtyOnHand: { lt },
-        ...(partnerId ? { partnerId } : {}),
-      };
-
-      const rows = await prisma.consignmentInventory.findMany({
-        where,
-        include: {
-          product: true,
-          partner: true,
-        },
-        orderBy: [{ qtyOnHand: "asc" }, { partnerId: "asc" }],
-        take: 200,
-      });
-
-      const items = rows.map((r) => ({
-        id: r.id,
-        partnerId: r.partnerId,
-        partnerName: r.partner?.name ?? null,
-        productId: r.productId,
-        barcode: r.product?.barcode ?? null,
-        name: r.product?.name ?? null,
-        qtyOnHand: r.qtyOnHand,
-        threshold: lt,
-      }));
-
-      res.json({ items, total: items.length });
+      // ✅ สำคัญ: คืน “อาเรย์ตรงๆ” เพื่อให้ StaffDashboard ใช้ .slice() ได้
+      return res.json(items);
     } catch (e) {
       next(e);
     }
