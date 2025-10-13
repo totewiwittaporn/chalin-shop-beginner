@@ -1,6 +1,6 @@
 import { NavLink, Link } from "react-router-dom";
 import { useMemo } from "react";
-import { MOBILE_GROUPS } from "../../nav.mobile"; // ปรับพาธให้ตรงโปรเจกต์คุณ
+import { MOBILE_GROUPS } from "@/nav.mobile"; // ปรับพาธให้ตรงโปรเจกต์คุณ
 
 function roleHomePath(roleUpper) {
   const r = String(roleUpper || "").toUpperCase();

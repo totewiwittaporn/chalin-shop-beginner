@@ -1,10 +1,10 @@
 // client/src/pages/ConsignmentDeliveryPage.jsx
 import { useMemo, useState } from 'react';
-import { Card } from '../../components/ui/Card.jsx';
-import { Table } from '../../components/ui/Table.jsx';
-import { useDataStore } from '../../store/dataStore.js';
+import { Card } from '@/components/ui/Card.jsx';
+import { Table } from '@/components/ui/Table.jsx';
+import { useDataStore } from '@/store/dataStore.js';
 import dayjs from 'dayjs';
-import { resolveCommissionPct, calcNetUnitPrice } from '../../utils/consignmentCalc.js';
+import { resolveCommissionPct, calcNetUnitPrice } from '@/utils/consignmentCalc.js';
 
 export default function ConsignmentDeliveryPage() {
   const {

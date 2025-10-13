@@ -26,6 +26,9 @@ import PurchasesPage from "@/pages/purchases/PurchasesPage";
 import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import InventoryCountPage from "@/pages/inventory/InventoryCountPage";
+import TransfersPage from '@/pages/transfers/TransfersPage';
+import PosPage from '@/pages/pos/PosPage.jsx';
+import UsersPage from "@/pages/users/UsersPage.jsx";
 
 // เอกสาร
 import DocsHome from '@/pages/docs/DocsHome';
@@ -70,6 +73,9 @@ export default function App() {
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/inventory/count" element={<InventoryCountPage />} />
+            <Route path="/transfers" element={<TransfersPage />} />
+            <Route path="/pos" element={<PosPage />} />
+            <Route path="/users" element={<UsersPage />} />
 
             <Route path="/docs" element={<DocsHome />}>
               <Route path="deliveries" element={<DeliveryDocs />} />

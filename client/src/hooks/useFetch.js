@@ -1,6 +1,6 @@
 // client/src/hooks/useFetch.js
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import api from "@/lib/api";
 
 export default function useFetch(url, { params, enabled = true } = {}) {
   const [data, setData] = useState(null);

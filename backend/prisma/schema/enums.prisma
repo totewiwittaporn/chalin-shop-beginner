@@ -40,3 +40,26 @@ enum StockLedgerType {
   CONSIGN_RETURN // ร้านฝากขายตีกลับ/คืน (สต็อกฝากขาย - , สต็อกสาขา +)
   CONSIGN_SALE // ร้านฝากขายขายออก (สต็อกฝากขาย -)
 }
+
+enum StockCountScope {
+  BRANCH
+  CONSIGNMENT
+}
+
+enum StockCountStatus {
+  OPEN
+  FINALIZED
+}
+
+enum TransferStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}

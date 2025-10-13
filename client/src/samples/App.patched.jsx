@@ -1,6 +1,6 @@
 // src/samples/App.patched.jsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { routerOptions } from '../routerBase.js';
+import { routerOptions } from '@/routerBase.js';
 
 // const routes = [ ...your existing route tree... ]
 

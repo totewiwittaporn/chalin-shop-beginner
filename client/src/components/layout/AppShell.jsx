@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import Sidebar from "./Sidebar";
-import Navbar from "./Navbar";
-import { useAuthStore } from "../../store/authStore";
-import api from "../../lib/api";
+import Sidebar from "@/components/layout/Sidebar";
+import Navbar from "@/components/layout/Navbar";
+import { useAuthStore } from "@/store/authStore";
+import api from "@/lib/api";
 
 /**
  * โครงหน้า: | Sidebar (fixed/sticky) | [ Navbar (top) + Content Area (scroll) ]

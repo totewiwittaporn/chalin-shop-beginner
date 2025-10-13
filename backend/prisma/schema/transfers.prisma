@@ -1,0 +1,40 @@
+// prisma/schema/transfers.prisma
+
+model Transfer {
+  id                     Int            @id @default(autoincrement())
+  code                   String?        @unique
+  date                   DateTime
+  fromBranchId           Int // สาขาต้นทาง (ต้องระบุเสมอ)
+  toBranchId             Int? // ถ้าปลายทาง = สาขา
+  toConsignmentPartnerId Int? // ถ้าปลายทาง = ร้านฝากขาย
+  notes                  String?
+  status                 TransferStatus @default(DRAFT)
+  sentAt                 DateTime?
+  receivedAt             DateTime?
+
+  // relations
+  fromBranch           Branch              @relation("TransferFromBranch", fields: [fromBranchId], references: [id])
+  toBranch             Branch?             @relation("TransferToBranch", fields: [toBranchId], references: [id])
+  toConsignmentPartner ConsignmentPartner? @relation(fields: [toConsignmentPartnerId], references: [id])
+  lines                TransferLine[]
+
+  @@index([fromBranchId])
+  @@index([toBranchId])
+  @@index([toConsignmentPartnerId])
+  @@index([status])
+  @@index([date])
+}
+
+model TransferLine {
+  id         Int @id @default(autoincrement())
+  transferId Int
+  productId  Int
+  qty        Int // จำนวนที่ "ตั้งใจส่ง"
+
+  // relations
+  transfer Transfer @relation(fields: [transferId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([transferId])
+  @@index([productId])
+}

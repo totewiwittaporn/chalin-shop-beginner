@@ -31,10 +31,13 @@ model Product {
   inventories   ConsignmentInventory[]
   purchaseLines PurchaseLine[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Inventory   Inventory[]
-  StockLedger StockLedger[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  Inventory      Inventory[]
+  StockLedger    StockLedger[]
+  StockCountLine StockCountLine[]
+  TransferLine   TransferLine[]
+  SaleItem       SaleItem[]
 
   @@index([productTypeId])
   @@index([branchId])

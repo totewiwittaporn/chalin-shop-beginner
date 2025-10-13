@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../store/authStore";
-import { dashboardPathByRole } from "../../lib/roleRoute";
+import { useAuthStore } from "@/store/authStore";
+import { dashboardPathByRole } from "@/lib/roleRoute";
 
 export default function DashboardRouter() {
   const user = useAuthStore((s) => s.user);

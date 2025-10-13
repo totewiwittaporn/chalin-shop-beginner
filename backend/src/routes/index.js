@@ -17,11 +17,11 @@ import consignmentPartnersRoutes from "#app/routes/consignment/consignment.partn
 import consignmentCategoriesRoutes from "#app/routes/consignment/categories.routes.js";
 
 // เพิ่มเติม
-import suppliersRoutes from "#app/routes/suppliers/suppliersRoutes.js";
-
-// ✅ เพิ่มสองเส้นทางที่ขาด
+import suppliersRoutes from "#app/routes/suppliers/suppliers.routes.js";
 import purchasesRoutes from "#app/routes/purchases/purchases.routes.js";
 import ordersRoutes from "#app/routes/orders/orders.routes.js";
+import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
+import transfersRoutes from "#app/routes/transfers/transfers.routes.js";
 
 export function mountPublicRoutes(app) {
   app.use("/api/auth", authRoutes);
@@ -42,8 +42,9 @@ export function mountProtectedRoutes(app) {
 
   // Others
   app.use("/api/suppliers", suppliersRoutes);
-
-  // ✅ สำคัญกับหน้าปัญหา
   app.use("/api/purchases", purchasesRoutes);
   app.use("/api/orders", ordersRoutes);
+  app.use("/api/inventory", inventoryRoutes);
+  app.use("/api/transfers", transfersRoutes);
+
 }

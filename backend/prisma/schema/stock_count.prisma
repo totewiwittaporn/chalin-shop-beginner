@@ -1,9 +1,5 @@
-// prisma/stock_count.prisma
-enum StockCountScope { BRANCH CONSIGNMENT }
-enum StockCountStatus { OPEN FINALIZED }
-
 model StockCount {
-  id                   Int        @id @default(autoincrement())
+  id                   Int              @id @default(autoincrement())
   scope                StockCountScope
   branchId             Int?
   consignmentPartnerId Int?
@@ -13,9 +9,9 @@ model StockCount {
   startedAt            DateTime
   finalizedAt          DateTime?
 
-  branch               Branch?            @relation(fields: [branchId], references: [id])
-  consignmentPartner   ConsignmentPartner? @relation(fields: [consignmentPartnerId], references: [id])
-  lines                StockCountLine[]
+  branch             Branch?             @relation(fields: [branchId], references: [id])
+  consignmentPartner ConsignmentPartner? @relation(fields: [consignmentPartnerId], references: [id])
+  lines              StockCountLine[]
 
   @@index([scope, status])
   @@index([branchId])
@@ -23,15 +19,15 @@ model StockCount {
 }
 
 model StockCountLine {
-  id            Int        @id @default(autoincrement())
-  stockCountId  Int
-  productId     Int
-  systemQty     Int        @default(0)
-  countedQty    Int        @default(0)
-  delta         Int        @default(0)
+  id           Int @id @default(autoincrement())
+  stockCountId Int
+  productId    Int
+  systemQty    Int @default(0)
+  countedQty   Int @default(0)
+  delta        Int @default(0)
 
-  stockCount    StockCount @relation(fields: [stockCountId], references: [id])
-  product       Product    @relation(fields: [productId], references: [id])
+  stockCount StockCount @relation(fields: [stockCountId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
 
   @@unique([stockCountId, productId])
   @@index([productId])

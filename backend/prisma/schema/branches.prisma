@@ -18,4 +18,12 @@ model Branch {
   updatedAt   DateTime      @updatedAt
   Inventory   Inventory[]
   StockLedger StockLedger[]
+  StockCount  StockCount[]
+
+  // เอกสารโอนที่ “ออกจาก” สาขานี้
+  transfersFrom Transfer[] @relation("TransferFromBranch")
+
+  // เอกสารโอนที่ “เข้ามา” สาขานี้
+  transfersTo Transfer[] @relation("TransferToBranch")
+  Sale        Sale[]
 }

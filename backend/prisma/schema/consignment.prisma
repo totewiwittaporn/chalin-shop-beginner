@@ -16,6 +16,8 @@ model ConsignmentPartner {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   StockLedger StockLedger[]
+  StockCount  StockCount[]
+  Transfer    Transfer[]
 }
 
 model ConsignmentCategory {

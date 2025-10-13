@@ -1,9 +1,13 @@
 // backend/src/routes/auth/auth.routes.js
 import { Router } from "express";
-import { PrismaClient, Role } from "@prisma/client";
+import pkg from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createHash } from "node:crypto";
+
+// ✅ ต้องประกาศ/ดึง PrismaClient, Prisma มาก่อน แล้วค่อย new PrismaClient()
+const { PrismaClient, Prisma } = pkg;
+const { Role } = Prisma;
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -13,16 +17,28 @@ const router = Router();
  */
 router.post("/register", async (req, res, next) => {
   try {
-    const { email, password, name, role = Role.QUOTE_VIEWER, branchId = null } = req.body;
+    const {
+      email,
+      password,
+      name,
+      role = Role?.QUOTE_VIEWER ?? "QUOTE_VIEWER",
+      branchId = null,
+    } = req.body;
+
+    const exists = await prisma.user.findUnique({ where: { email } });
+    if (exists) return res.status(409).json({ error: "Email already registered" });
 
     const hash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: { email, password: hash, name, role, branchId },
     });
 
-    res
-      .status(201)
-      .json({ id: user.id, email: user.email, role: user.role, branchId: user.branchId });
+    res.status(201).json({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      branchId: user.branchId,
+    });
   } catch (e) {
     next(e);
   }
@@ -43,30 +59,33 @@ router.post("/login", async (req, res, next) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    // 3) sign token (log hash head เพื่อดีบั๊ก)
+    // 3) sign token
     const secret = String(process.env.JWT_SECRET || "");
+    if (!secret) {
+      console.warn(
+        "[WARN] JWT_SECRET is empty. Set JWT_SECRET in your backend .env for security."
+      );
+    }
     console.log(
       "[SIGN] JWT_SECRET_SHA256_HEAD:",
       createHash("sha256").update(secret).digest("hex").slice(0, 12)
     );
 
-    // ระวัง: ทำให้ payload ครบถ้วน ใช้ทั้ง role และ roles
     const payload = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: String(user.role).toUpperCase(),
-      roles: [String(user.role).toUpperCase()], // เผื่ออนาคตมี multi-role
+      roles: [String(user.role).toUpperCase()],
       branchId: user.branchId ?? null,
       partnerId: user.partnerId ?? null,
     };
 
     const token = jwt.sign(payload, secret, {
-      expiresIn: process.env.JWT_EXPIRES_IN || "1h", // ← default 1 ชั่วโมงตามที่ต้องการ
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
       algorithm: "HS256",
     });
 
-    // 4) ตอบกลับ (ส่งข้อมูล user ให้ frontend ใช้ทันที)
     res.json({
       token,
       user: {
@@ -85,9 +104,50 @@ router.post("/login", async (req, res, next) => {
 });
 
 /**
+ * GET /api/auth/me
+ * - ตรวจ Authorization: Bearer <token>
+ * - คืนข้อมูลผู้ใช้จาก token (และ sync บางฟิลด์จาก DB ถ้าต้องการ)
+ */
+router.get("/me", async (req, res, _next) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Missing token" });
+
+    const secret = String(process.env.JWT_SECRET || "");
+    const decoded = jwt.verify(token, secret); // ถ้าไม่ถูกต้องจะ throw
+
+    // จะดึงข้อมูลสดจาก DB ก็ได้ (กันกรณี role ถูกเปลี่ยน)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        branchId: true,
+        partnerId: true,
+      },
+    });
+    if (!dbUser) return res.status(401).json({ error: "User not found" });
+
+    res.json({
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      role: String(dbUser.role).toUpperCase(),
+      roles: [String(dbUser.role).toUpperCase()],
+      branchId: dbUser.branchId ?? null,
+      partnerId: dbUser.partnerId ?? null,
+    });
+  } catch (e) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+});
+
+/**
  * POST /api/auth/logout
- * JWT เป็น stateless ทำลายที่ฝั่งเซิร์ฟเวอร์ไม่ได้ (ถ้าไม่ทำ token blacklist)
- * ให้ client ลบ token เอง
+ * - JWT เป็น stateless ให้ client ลบ token เอง
  */
 router.post("/logout", async (_req, res) => {
   res.json({ ok: true });

@@ -1,6 +1,6 @@
 // backend/src/routes/purchases/purchases.routes.js
 import { Router } from "express";
-import * as ctrl from "#app/controllers/purchasesController.js";
+import * as ctrl from "#app/controllers/purchases/purchasesController.js";
 import { requireAuth } from "#app/middleware/auth.js";
 
 const router = Router();
