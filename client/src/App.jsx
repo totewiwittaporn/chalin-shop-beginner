@@ -25,6 +25,7 @@ import ConsignmentCategoryMappingPage from "@/pages/consignment/ConsignmentCateg
 import PurchasesPage from "@/pages/purchases/PurchasesPage";
 import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 import InventoryPage from "@/pages/inventory/InventoryPage";
+import InventoryCountPage from "@/pages/inventory/InventoryCountPage";
 
 // เอกสาร
 import DocsHome from '@/pages/docs/DocsHome';
@@ -66,6 +67,7 @@ export default function App() {
             <Route path="/purchases" element={<PurchasesPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/count" element={<InventoryCountPage />} />
 
             <Route path="/docs" element={<DocsHome />}>
               <Route path="deliveries" element={<DeliveryDocs />} />

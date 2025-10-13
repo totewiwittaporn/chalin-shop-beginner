@@ -7,8 +7,8 @@
     "#app/*": "./src/*"
   },
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
     "prisma:format": "prisma format --schema ./prisma/schema",
     "prisma:validate": "prisma validate --schema ./prisma/schema",
     "prisma:generate": "prisma generate --schema ./prisma/schema",

@@ -50,24 +50,33 @@ router.post("/login", async (req, res, next) => {
       createHash("sha256").update(secret).digest("hex").slice(0, 12)
     );
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role: String(user.role).toUpperCase(),
-        branchId: user.branchId ?? null,
-      },
-      secret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d", algorithm: "HS256" }
-    );
+    // ระวัง: ทำให้ payload ครบถ้วน ใช้ทั้ง role และ roles
+    const payload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: String(user.role).toUpperCase(),
+      roles: [String(user.role).toUpperCase()], // เผื่ออนาคตมี multi-role
+      branchId: user.branchId ?? null,
+      partnerId: user.partnerId ?? null,
+    };
 
-    // 4) ตอบกลับ
+    const token = jwt.sign(payload, secret, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h", // ← default 1 ชั่วโมงตามที่ต้องการ
+      algorithm: "HS256",
+    });
+
+    // 4) ตอบกลับ (ส่งข้อมูล user ให้ frontend ใช้ทันที)
     res.json({
       token,
       user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        branchId: user.branchId,
+        id: payload.id,
+        email: payload.email,
+        name: payload.name,
+        role: payload.role,
+        roles: payload.roles,
+        branchId: payload.branchId,
+        partnerId: payload.partnerId,
       },
     });
   } catch (e) {
@@ -78,10 +87,9 @@ router.post("/login", async (req, res, next) => {
 /**
  * POST /api/auth/logout
  * JWT เป็น stateless ทำลายที่ฝั่งเซิร์ฟเวอร์ไม่ได้ (ถ้าไม่ทำ token blacklist)
- * เราเพียงตอบ 200 แล้วให้ฝั่ง client ลบ token ออกจาก localStorage/หน่วยความจำ
+ * ให้ client ลบ token เอง
  */
 router.post("/logout", async (_req, res) => {
-  // ถ้าคุณอยากเคลียร์คุกกี้ ก็ res.clearCookie(...) ตรงนี้ได้
   res.json({ ok: true });
 });
 

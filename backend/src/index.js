@@ -1,30 +1,45 @@
+// backend/src/index.js
 import express from "express";
-import morgan from "morgan";
 import cors from "cors";
-import 'dotenv/config'
-import { auth } from "#app/middleware/auth.js";
-import productsRouter from "#app/routes/products.js";
-import consignmentCategoriesRouter from "#app/routes/consignmentCategories.js";
-import documentsRouter from "#app/routes/documents.js";
+import morgan from "morgan";
+import helmet from "helmet";
+import "dotenv/config";
 
-import usersRouter from "#app/routes/users.js";
-import salesRouter from "#app/routes/sales.js";
+import { requireAuth } from "#app/middleware/auth.js";
+import { errorHandler } from "#app/middleware/error.js";
+import { mountPublicRoutes, mountProtectedRoutes } from "#app/routes/index.js";
 
 const app = express();
-app.use(cors());
+
+// Base middlewares
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(",") || "*",
+  credentials: true,
+}));
 app.use(express.json());
-app.use(morgan("dev"));
 
-app.get("/health", (req, res) => res.json({ ok: true }));
+if (process.env.NODE_ENV !== "production") {
+  app.use(morgan("dev"));
+}
 
-app.use(auth);
+// Health
+app.get("/health", (_req, res) => res.json({ ok: true, env: process.env.NODE_ENV || "development" }));
 
-app.use("/api/products", productsRouter);
-app.use("/api/consignment-categories", consignmentCategoriesRouter);
-app.use("/api/documents", documentsRouter);
+// Public routes (ไม่ต้องล็อกอิน)
+mountPublicRoutes(app);
 
-app.use("/api/users", usersRouter);
-app.use("/api/sales", salesRouter);
+// Protected routes (ต้องล็อกอิน)
+app.use(requireAuth);
+mountProtectedRoutes(app);
 
-const port = process.env.PORT || 5000;
-app.listen(port, () => console.log(`API on http://localhost:${port}`));
+// 404 fallback
+app.use((_req, res) => res.status(404).json({ message: "Not Found" }));
+
+// Error handler กลาง
+app.use(errorHandler);
+
+const port = Number(process.env.PORT || 5000);
+app.listen(port, () => {
+  console.log(`[API] Ready on http://localhost:${port} (${process.env.NODE_ENV || "development"})`);
+});

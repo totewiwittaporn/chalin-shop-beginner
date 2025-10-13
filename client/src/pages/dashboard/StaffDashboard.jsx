@@ -1,3 +1,4 @@
+// client/src/pages/dashboard/StaffDashboard.jsx
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import Input from "@/components/ui/Input";
@@ -18,6 +19,8 @@ function HeaderBar({ title, children }) {
   );
 }
 
+const toArray = (v) => (Array.isArray(v) ? v : []);
+
 export default function StaffDashboard() {
   const [q, setQ] = useState("");
   const [kpi, setKpi] = useState({ week: 0, today: 0, pct: 0, tasks: 0 });
@@ -31,13 +34,13 @@ export default function StaffDashboard() {
       try {
         setLoading(true);
         const [o, l, s] = await Promise.all([
-          api.get("/api/orders/recent", { params: { limit: 5 } }).catch(()=>({data:[]})),
-          api.get("/api/products/low-stock", { params: { lt: 10 } }).catch(()=>({data:[]})),
-          api.get("/api/sales/summary", { params: { range: "7d" } }).catch(()=>({data:{}})),
+          api.get("/api/orders/recent", { params: { limit: 5 } }).catch(() => ({ data: [] })),
+          api.get("/api/products/low-stock", { params: { lt: 10 } }).catch(() => ({ data: [] })),
+          api.get("/api/sales/summary", { params: { range: "7d" } }).catch(() => ({ data: {} })),
         ]);
         if (!on) return;
-        setOrders(o.data || []);
-        setLow(l.data || []);
+        setOrders(toArray(o.data));
+        setLow(toArray(l.data));
         const sum = s.data || {};
         setKpi({ week: sum.total ?? 0, today: sum.today ?? 0, pct: sum.pct ?? 0, tasks: sum.tasksToday ?? 0 });
       } finally {
@@ -49,16 +52,16 @@ export default function StaffDashboard() {
 
   const columns = [
     { key: "code", header: "เลขที่" },
-    { key: "createdAt", header: "วันที่", render: (v)=> new Date(v).toLocaleString("th-TH") },
-    { key: "customer", header: "ลูกค้า", render: (_,r)=> r.customer?.name || "-" },
-    { key: "total", header: "ยอดรวม", render: (v)=> fmt(v) },
+    { key: "createdAt", header: "วันที่", render: (v) => new Date(v).toLocaleString("th-TH") },
+    { key: "customer", header: "ลูกค้า", render: (_, r) => r.customer?.name || "-" },
+    { key: "total", header: "ยอดรวม", render: (v) => fmt(v) },
   ];
 
   return (
     <div className="p-4 md:p-6">
       <HeaderBar title="Staff Dashboard">
         <div className="flex gap-3 items-center">
-          <Input className="input-glass w-56" placeholder="ค้นหาออเดอร์..." value={q} onChange={(e)=>setQ(e.target.value)} />
+          <Input className="input-glass w-56" placeholder="ค้นหาออเดอร์..." value={q} onChange={(e) => setQ(e.target.value)} />
           <Button className="btn-white">New Order</Button>
         </div>
       </HeaderBar>
@@ -79,7 +82,7 @@ export default function StaffDashboard() {
             ) : (
               <Table
                 columns={columns}
-                data={(orders || []).filter((o) =>
+                data={toArray(orders).filter((o) =>
                   [o.code, o.customer?.name].join(" ").toLowerCase().includes(q.toLowerCase())
                 )}
               />
@@ -89,13 +92,13 @@ export default function StaffDashboard() {
         <Card>
           <div className="h-title mb-3">สินค้าใกล้หมด</div>
           <ul className="space-y-2">
-            {(low || []).slice(0,6).map((p) => (
+            {toArray(low).slice(0, 6).map((p) => (
               <li key={p.id} className="flex items-center justify-between border border-[var(--card-border)] rounded-xl p-3">
                 <div className="font-medium">{p.name}</div>
                 <div className="text-sm">{p.stock}</div>
               </li>
             ))}
-            {!low?.length && <div className="text-muted text-sm">ไม่มีสินค้าใกล้หมด</div>}
+            {!toArray(low).length && <div className="text-muted text-sm">ไม่มีสินค้าใกล้หมด</div>}
           </ul>
         </Card>
       </div>
@@ -103,8 +106,8 @@ export default function StaffDashboard() {
   );
 }
 
-function fmt(n){
-  if(n==null) return "0.00";
-  try{ return Number(n).toLocaleString("th-TH",{style:"currency",currency:"THB"});}
-  catch{return String(n);}
+function fmt(n) {
+  if (n == null) return "0.00";
+  try { return Number(n).toLocaleString("th-TH", { style: "currency", currency: "THB" }); }
+  catch { return String(n); }
 }

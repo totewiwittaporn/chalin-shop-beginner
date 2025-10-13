@@ -1,31 +1,47 @@
 // backend/src/routes/auth/auth.me.routes.js
 import { Router } from "express";
-import prisma from "#app/lib/prisma.js";        // ✅ แก้เป็น default import
 import { requireAuth } from "#app/middleware/auth.js";
+import prisma from "#app/lib/prisma.js"; // ถ้าไม่มีไฟล์นี้อยู่จริง เปลี่ยนเป็น PrismaClient ตรงๆ ได้
 
 const router = Router();
 
-router.get("/me", requireAuth, async (req, res, next) => {
+// ต้องมี token ทุกครั้ง
+router.use(requireAuth);
+
+/**
+ * GET /api/auth/me
+ * ดึงข้อมูลจาก token ก่อน และ (ถ้าต้องการ) sync จากฐานข้อมูล
+ */
+router.get("/", async (req, res, next) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const base = {
+      id: req.user?.id,
+      email: req.user?.email,
+      name: req.user?.name,
+      role: req.user?.role,
+      roles: req.user?.roles || [],
+      branchId: req.user?.branchId ?? null,
+      partnerId: req.user?.partnerId ?? null,
+    };
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(userId) },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        branchId: true,
-        partnerId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    // ถ้ามี prisma และอยาก sync role/branch ล่าสุดจาก DB (กันเคส role เปลี่ยนหลังออก token)
+    // คอมเมนต์บล็อกนี้ได้ถ้าไม่ต้องการ hit DB ทุกครั้ง
+    if (base.id && prisma?.user?.findUnique) {
+      const userDb = await prisma.user.findUnique({
+        where: { id: Number(base.id) },
+        select: { email: true, name: true, role: true, branchId: true, partnerId: true }
+      });
+      if (userDb) {
+        base.email = userDb.email ?? base.email;
+        base.name = userDb.name ?? base.name;
+        base.role = String(userDb.role).toUpperCase();
+        base.roles = [base.role];
+        base.branchId = userDb.branchId ?? base.branchId;
+        base.partnerId = userDb.partnerId ?? base.partnerId;
+      }
+    }
 
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
-    res.json(user);
+    res.json(base);
   } catch (err) {
     next(err);
   }

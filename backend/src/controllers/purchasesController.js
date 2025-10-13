@@ -1,10 +1,13 @@
 // backend/src/controllers/purchasesController.js
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-function parseIntOr(v, d=0) { const n = parseInt(v,10); return Number.isFinite(n)? n : d; }
+function parseIntOr(v, d = 0) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : d;
+}
 
-exports.create = async (req, res) => {
+export async function create(req, res) {
   try {
     const { supplierId, branchId, items } = req.body;
     if (!supplierId || !branchId || !Array.isArray(items) || items.length === 0) {
@@ -29,9 +32,14 @@ exports.create = async (req, res) => {
         },
         include: { lines: true, supplier: true },
       });
-      // sum total
-      const total = purchase.lines.reduce((s, l)=> s + (Number(l.costPrice||0) * Number(l.ordered||0)), 0);
-      await tx.purchase.update({ where: { id: purchase.id }, data: { totalCost: total } });
+      const total = purchase.lines.reduce(
+        (s, l) => s + (Number(l.costPrice || 0) * Number(l.ordered || 0)),
+        0
+      );
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: { totalCost: total },
+      });
       return purchase;
     });
 
@@ -40,9 +48,9 @@ exports.create = async (req, res) => {
     console.error(e);
     res.status(500).json({ message: "server error" });
   }
-};
+}
 
-exports.list = async (req, res) => {
+export async function list(req, res) {
   try {
     const { q = "", page = 1, pageSize = 20, status } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(pageSize);
@@ -54,10 +62,18 @@ exports.list = async (req, res) => {
       where.OR = [
         { code: { contains: q, mode: "insensitive" } },
         { supplier: { name: { contains: q, mode: "insensitive" } } },
-        { lines: { some: { product: { OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { barcode: { contains: q, mode: "insensitive" } },
-        ] } } } },
+        {
+          lines: {
+            some: {
+              product: {
+                OR: [
+                  { name: { contains: q, mode: "insensitive" } },
+                  { barcode: { contains: q, mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+        },
       ];
     }
 
@@ -66,7 +82,8 @@ exports.list = async (req, res) => {
         where,
         include: { supplier: true },
         orderBy: { id: "desc" },
-        skip, take,
+        skip,
+        take,
       }),
       prisma.purchase.count({ where }),
     ]);
@@ -76,11 +93,11 @@ exports.list = async (req, res) => {
     console.error(e);
     res.status(500).json({ message: "server error" });
   }
-};
+}
 
-exports.receive = async (req, res) => {
+export async function receive(req, res) {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
     const purchase = await prisma.purchase.findUnique({
       where: { id },
       include: { lines: true },
@@ -89,18 +106,12 @@ exports.receive = async (req, res) => {
     if (purchase.status === "RECEIVED") return res.json(purchase);
 
     const result = await prisma.$transaction(async (tx) => {
-      // อัปเดตจำนวน received = ordered ทุกบรรทัด (รับเข้าทั้งใบ)
-      await tx.purchaseLine.updateMany({
-        where: { purchaseId: id },
-        data: { received: { set: undefined } }, // noop line to be explicit
-      });
       for (const l of purchase.lines) {
         await tx.purchaseLine.update({
           where: { id: l.id },
           data: { received: l.ordered },
         });
-        // บันทึกสต็อกเข้า (ถ้ามีตารางสต็อก/เลดเจอร์ ให้ใส่ที่นี่)
-        // ตัวอย่าง: tx.stockLedger.create({ data: {...} })
+        // TODO: บันทึกสต็อกเข้า stock ledger ถ้ามี
       }
       const updated = await tx.purchase.update({
         where: { id },
@@ -115,4 +126,4 @@ exports.receive = async (req, res) => {
     console.error(e);
     res.status(500).json({ message: "server error" });
   }
-};
+}
