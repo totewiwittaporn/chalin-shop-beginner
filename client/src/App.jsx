@@ -38,9 +38,13 @@ import DocPreview from '@/pages/docs/DocPreview';
 
 import RequireAuth from '@/components/auth/RequireAuth.jsx';
 
+import { BrowserRouter } from "react-router-dom";
+
+const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || "/";
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASENAME}>
       <Routes>
         {/* ===== Public routes (ไม่ต้องล็อกอิน) ===== */}
         <Route path="/" element={<PreAuthLanding />} />
