@@ -23,6 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# .prettierignore
-dist
-node_modules
+.env
+.env.*
+!.env.example
