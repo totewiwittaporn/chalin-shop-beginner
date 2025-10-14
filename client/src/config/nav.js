@@ -1,84 +1,102 @@
 // client/src/config/nav.js
-export const NAV_BY_ROLE = {
-  ADMIN: [
-    { section: 'ทั่วไป', items: [
-      { label: 'Dashboard', to: '/', icon: 'Dashboard' },
-    ] },
-    { section: 'Products', items: [
-      { label: 'Products', to: '/products', icon: 'Package' },
-      { label: 'Consignment Categories', to: '/consignment/categories', icon: 'Tags' },
-    ]},
-    { section: 'Shops', items: [
-      { label: 'Branches', to: '/branches', icon: 'Building' },
-      { label: 'Consignment Shops', to: '/consignment-shops', icon: 'Store' },
-      { label: 'Inventory', to: '/inventory', icon: 'Boxes' },
-      { label: 'Count Inventory', to: '/inventory/count', icon: 'Boxes' },
-    ]},
-    { section: 'Transactions', items: [
-      { label: 'Purchases', to: '/purchases', icon: 'Cart' },
-      { label: 'Delivery Branches', to: '/branches/delivery', icon: 'Swap' },
-      { label: 'Delivery Consignments', to: '/consignment/delivery', icon: 'Swap' },
-      { label: 'POS Branches', to: '/branches/sales', icon: 'Receipt' },
-      { label: 'POS Consignments', to: '/consignment/sales', icon: 'Receipt' },
-      { label: 'Quotes', to: '/quotes', icon: 'FileText' },
-    ]},
-    { section: 'Reports', items: [
-      { label: 'Deliveries', to: '/docs/deliveries', icon: 'FileText' },
-      { label: 'Consignment Sales', to: '/docs/consales', icon: 'FileText' },
-      { label: 'Invoices', to: '/docs/invoices', icon: 'FileText' },
-      { label: 'Receipts', to: '/docs/receipts', icon: 'FileText' },
-      { label: 'Quotes', to: '/docs/quotes', icon: 'FileText' },
-    ]},
-    { section: 'Settings', items: [
-      { label: 'Main Settings', to: '/settings', icon: 'Settings' },
-      { label: 'Template Settings', to: '/settings/templates', icon: 'Settings' },
-      { label: 'Users', to: '/users', icon: 'Users' },
-      { label: 'Profile', to: '/profile', icon: 'Users' },
-    ]},
-  ],
+export const MOBILE_GROUPS = (role = 'admin') => {
+  const isAdmin = role === 'admin';
+  const groupsAdmin = [
+    {
+      id: 'products',
+      label: 'Products',
+      items: [
+        { to: '/products', label: 'Products' },
+        { to: '/consignment/categories', label: 'Consignment Categories' },
+      ],
+    },
+    {
+      id: 'shops',
+      label: 'Shops',
+      items: [
+        { to: '/branches', label: 'Branches' },
+        { to: '/consignment/shops', label: 'Consignment Shops' },
+        { to: '/inventory', label: 'Inventory' },
+        { to: '/inventory/count', label: 'Count Inventory' },
+      ],
+    },
+    {
+      id: 'transactions',
+      label: 'Transactions',
+      items: [
+        { to: '/purchases', label: 'Purchases' },
+        { to: '/branch/delivery', label: 'Branch Delivery' },
+        { to: '/branch/sales', label: 'Branch Sales (POS)' },
+        { to: '/consignment/delivery', label: 'Consignment Delivery' },
+        { to: '/consignment/sales', label: 'Consignment Sales (POS)' },
+        { to: '/quotes', label: 'Quotes' },
+      ],
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      items: [
+        { to: '/docs/deliveries', label: 'Deliveries' },
+        { to: '/docs/consales', label: 'Consignment Sales' },
+        { to: '/docs/invoices', label: 'Invoices' },
+        { to: '/docs/receipts', label: 'Receipts' },
+        { to: '/docs/quotes', label: 'Quotes' },
+      ],
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      items: [
+        { to: '/settings', label: 'Main Settings' },
+        { to: '/settings/templates', label: 'Template Settings' },
+        { to: '/users', label: 'Users' },
+        { to: '/profile', label: 'Profile' },
+      ],
+    },
+  ];
 
-  STAFF: [
-    { section: 'ทั่วไป', items: [{ label: 'Dashboard', to: '', icon: 'Dashboard' }] },
-    { section: 'Shops', items: [
-      { label: 'Inventory', to: '/inventory', icon: 'Boxes' },
-      { label: 'Count Inventory', to: '/inventory/count', icon: 'Boxes' },
-    ]},
-    { section: 'Transactions', items: [
-      { label: 'POS Branches', to: '/branches/sales', icon: 'Receipt' },
-    ]},
-    { section: 'Reports', items: [
-      { label: 'Branch Sales', to: '/docs/branches-sales', icon: 'FileText' },
-    ]},
-    { section: 'Settings', items: [
-      { label: 'Profile', to: '/profile', icon: 'Users' },
-    ]},
-  ],
+  if (isAdmin) return groupsAdmin;
 
-  CONSIGNMENT: [
-    { section: 'ทั่วไป', items: [{ label: 'Dashboard', to: '', icon: 'Dashboard' }] },
-    { section: 'Transactions', items: [
-      { label: 'Delivery', to: '/consignment/delivery', icon: 'Swap' },
-      { label: 'Sales (POS)', to: '/consignment/sales', icon: 'Receipt' },
-    ]},
-    { section: 'Reports', items: [
-      { label: 'Consignment Sales', to: '/docs/consales', icon: 'FileText' },
-      { label: 'Deliveries', to: '/docs/deliveries', icon: 'FileText' },
-    ]},
-    { section: 'Settings', items: [
-      { label: 'Profile', to: '/profile', icon: 'Users' },
-    ]},
-  ],
+  if (role === 'staff') {
+    return [
+      { id: 'shops', label: 'Shops',
+        items: [
+          { to: '/inventory', label: 'Inventory' },
+          { to: '/inventory/count', label: 'Count Inventory' },
+        ]},
+      { id: 'transactions', label: 'Transactions',
+        items: [{ to: '/branch/sales', label: 'Branch Sales (POS)' }]},
+      { id: 'reports', label: 'Reports',
+        items: [{ to: '/docs/branch-sales', label: 'Branch Sales' }]},
+      { id: 'settings', label: 'Settings',
+        items: [{ to: '/profile', label: 'Profile' }]},
+    ];
+  }
 
-  QUOTE_VIEWER: [
-    { section: 'ทั่วไป', items: [{ label: 'Dashboard', to: '', icon: 'Dashboard' }] },
-    { section: 'Products', items: [
-      { label: 'Products', to: '/products', icon: 'Package' },
-    ]},
-    { section: 'Reports', items: [
-      { label: 'Quotes', to: '/docs/quotes', icon: 'FileText' },
-    ]},
-    { section: 'Settings', items: [
-      { label: 'Profile', to: '/profile', icon: 'Users' },
-    ]},
-  ],
+  if (role === 'consignment') {
+    return [
+      { id: 'transactions', label: 'Transactions',
+        items: [
+          { to: '/consignment/delivery', label: 'Consignment Delivery' },
+          { to: '/consignment/sales', label: 'Consignment Sales (POS)' },
+        ]},
+      { id: 'reports', label: 'Reports',
+        items: [
+          { to: '/docs/consales', label: 'Consignment Sales' },
+          { to: '/docs/deliveries', label: 'Deliveries' },
+        ]},
+      { id: 'settings', label: 'Settings',
+        items: [{ to: '/profile', label: 'Profile' }]},
+    ];
+  }
+
+  if (role === 'quote-viewer') {
+    return [
+      { id: 'products', label: 'Products', items: [{ to: '/products', label: 'Products' }]},
+      { id: 'reports', label: 'Reports', items: [{ to: '/docs/quotes', label: 'Quotes' }]},
+      { id: 'settings', label: 'Settings', items: [{ to: '/profile', label: 'Profile' }]},
+    ];
+  }
+
+  return groupsAdmin;
 };

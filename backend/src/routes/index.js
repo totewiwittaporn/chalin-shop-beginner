@@ -16,7 +16,7 @@ import salesRoutes from "#app/routes/sales/sales.routes.js";
 import consignmentPartnersRoutes from "#app/routes/consignment/consignment.partners.routes.js";
 import consignmentCategoriesRoutes from "#app/routes/consignment/categories.routes.js";
 
-// เพิ่มเติม
+// Others
 import suppliersRoutes from "#app/routes/suppliers/suppliers.routes.js";
 import purchasesRoutes from "#app/routes/purchases/purchases.routes.js";
 import ordersRoutes from "#app/routes/orders/orders.routes.js";
@@ -46,5 +46,4 @@ export function mountProtectedRoutes(app) {
   app.use("/api/orders", ordersRoutes);
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/transfers", transfersRoutes);
-
 }

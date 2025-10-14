@@ -3,6 +3,7 @@ import pkg from "@prisma/client";
 const { PrismaClient, Prisma } = pkg;
 const prisma = new PrismaClient();
 
+// ชื่อตรงกับ enums.prisma ของคุณ
 const LEDGER_IN = "TRANSFER_IN";
 const LEDGER_OUT = "TRANSFER_OUT";
 
@@ -55,7 +56,12 @@ export async function getTransfer(req, res) {
     const id = parseInt(req.params.id, 10);
     const doc = await prisma.transfer.findUnique({
       where: { id },
-      include: { lines: true, fromBranch: true, toBranch: true, toConsignmentPartner: true },
+      include: {
+        lines: true,
+        fromBranch: true,
+        toBranch: true,
+        toConsignmentPartner: true,
+      },
     });
     if (!doc) return res.status(404).json({ message: "not found" });
     res.json(doc);
@@ -103,7 +109,7 @@ export async function createTransfer(req, res) {
   }
 }
 
-// PUT /api/transfers/:id  (แก้ไขเฉพาะ DRAFT)
+// PUT /api/transfers/:id  (แก้ได้เฉพาะ DRAFT)
 export async function updateTransfer(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -119,7 +125,6 @@ export async function updateTransfer(req, res) {
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      // ลบไลน์เก่า + สร้างใหม่
       await tx.transferLine.deleteMany({ where: { transferId: id } });
       const doc = await tx.transfer.update({
         where: { id },
@@ -145,6 +150,7 @@ export async function updateTransfer(req, res) {
 }
 
 // POST /api/transfers/:id/send  (DRAFT -> SENT)
+// **รุ่นนี้จะตัดสต็อก “ออกจากต้นทาง” ทันที**
 export async function sendTransfer(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -160,11 +166,29 @@ export async function sendTransfer(req, res) {
       return res.status(400).json({ message: "cannot send with no lines" });
     }
 
-    const updated = await prisma.transfer.update({
-      where: { id },
-      data: { status: "SENT", sentAt: new Date() },
-      include: { lines: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1) OUT จากต้นทาง (แสดงว่าสินค้าถูกส่งออกแล้ว)
+      const outRows = existing.lines.map((l) => ({
+        productId: l.productId,
+        branchId: existing.fromBranchId,
+        qty: -Math.abs(l.qty), // ออก = ติดลบ
+        type: LEDGER_OUT,      // TRANSFER_OUT
+        refTable: "Transfer",
+        refId: existing.id,
+        unitCost: new Prisma.Decimal(0),
+      }));
+      if (outRows.length) await tx.stockLedger.createMany({ data: outRows });
+
+      // 2) เปลี่ยนสถานะเอกสารเป็น SENT
+      const doc = await tx.transfer.update({
+        where: { id: existing.id },
+        data: { status: "SENT", sentAt: new Date() },
+        include: { lines: true },
+      });
+
+      return doc;
     });
+
     res.json(updated);
   } catch (e) {
     console.error(e);
@@ -172,7 +196,8 @@ export async function sendTransfer(req, res) {
   }
 }
 
-// POST /api/transfers/:id/receive  (SENT -> RECEIVED)  **ลง movement ที่นี่**
+// POST /api/transfers/:id/receive  (SENT -> RECEIVED)
+// **รุ่นนี้จะ “รับเข้า” ที่ปลายทางเท่านั้น** (เพราะ OUT ทำไปตอนส่งแล้ว)
 export async function receiveTransfer(req, res) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -189,25 +214,13 @@ export async function receiveTransfer(req, res) {
     const isToConsignment = !!existing.toConsignmentPartnerId;
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1) เขียน movement ออกจาก fromBranch
-      const outRows = existing.lines.map((l) => ({
-        productId: l.productId,
-        branchId: existing.fromBranchId,
-        qty: -Math.abs(l.qty),             // ออก: ติดลบ
-        type: LEDGER_OUT,                  // TRANSFER_OUT
-        refTable: "Transfer",
-        refId: existing.id,
-        unitCost: new Prisma.Decimal(0),   // ถ้าต้องการต้นทุนเฉลี่ย/ล่าสุด สามารถคำนวนเพิ่มทีหลัง
-      }));
-      if (outRows.length) await tx.stockLedger.createMany({ data: outRows });
-
-      // 2) เขียน movement เข้าปลายทาง
+      // 1) เขียน movement เข้า “ปลายทาง”
       if (isToBranch) {
         const inRows = existing.lines.map((l) => ({
           productId: l.productId,
           branchId: existing.toBranchId,
-          qty: Math.abs(l.qty),           // เข้า: บวก
-          type: LEDGER_IN,                // TRANSFER_IN
+          qty: Math.abs(l.qty), // เข้า = บวก
+          type: LEDGER_IN,      // TRANSFER_IN
           refTable: "Transfer",
           refId: existing.id,
           unitCost: new Prisma.Decimal(0),
@@ -218,7 +231,7 @@ export async function receiveTransfer(req, res) {
           productId: l.productId,
           consignmentPartnerId: existing.toConsignmentPartnerId,
           qty: Math.abs(l.qty),
-          type: LEDGER_IN,                // TRANSFER_IN (ฝั่งฝากขาย)
+          type: LEDGER_IN,      // TRANSFER_IN (ฝั่งฝากขาย)
           refTable: "Transfer",
           refId: existing.id,
           unitCost: new Prisma.Decimal(0),
@@ -226,7 +239,7 @@ export async function receiveTransfer(req, res) {
         if (inRows.length) await tx.stockLedger.createMany({ data: inRows });
       }
 
-      // 3) ปิดเอกสาร
+      // 2) ปิดเอกสาร
       const updated = await tx.transfer.update({
         where: { id: existing.id },
         data: { status: "RECEIVED", receivedAt: new Date() },
