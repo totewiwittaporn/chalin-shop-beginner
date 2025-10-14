@@ -1,0 +1,29 @@
+model BranchBankAccount {
+  id                  Int     @id @default(autoincrement())
+  branchId            Int
+  bankName            String
+  accountNo           String
+  accountName         String?
+  isActive            Boolean @default(true)
+  isDefaultForReceipt Boolean @default(false)
+  isDefaultForBill    Boolean @default(false)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+}
+
+model PartnerBankAccount {
+  id                  Int     @id @default(autoincrement())
+  partnerId           Int
+  bankName            String
+  accountNo           String
+  accountName         String?
+  isActive            Boolean @default(true)
+  isDefaultForBill    Boolean @default(false)
+  isDefaultForReceipt Boolean @default(false)
+
+  partner ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+}

@@ -22,6 +22,7 @@ import purchasesRoutes from "#app/routes/purchases/purchases.routes.js";
 import ordersRoutes from "#app/routes/orders/orders.routes.js";
 import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
 import transfersRoutes from "#app/routes/transfers/transfers.routes.js";
+import bankAccountsRoutes from '#app/routes/bank/bank-accounts.routes.js';
 
 export function mountPublicRoutes(app) {
   app.use("/api/auth", authRoutes);
@@ -46,4 +47,5 @@ export function mountProtectedRoutes(app) {
   app.use("/api/orders", ordersRoutes);
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/transfers", transfersRoutes);
+  app.use('/api', bankAccountsRoutes);
 }

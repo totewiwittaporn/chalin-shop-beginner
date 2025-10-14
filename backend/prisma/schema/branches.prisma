@@ -4,7 +4,9 @@ model Branch {
   id             Int      @id @default(autoincrement())
   code           String   @unique // เช่น PNA-KRBR-GVT
   name           String
-  address        String?
+  addressLine1   String?
+  addressLine2   String?
+  addressLine3   String?
   commissionRate Decimal? @db.Decimal(5, 2)
   isActive       Boolean  @default(true)
 
@@ -14,11 +16,12 @@ model Branch {
   documents Document[]
   purchases Purchase[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Inventory   Inventory[]
-  StockLedger StockLedger[]
-  StockCount  StockCount[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  Inventory    Inventory[]
+  StockLedger  StockLedger[]
+  StockCount   StockCount[]
+  bankAccounts BranchBankAccount[]
 
   // เอกสารโอนที่ “ออกจาก” สาขานี้
   transfersFrom Transfer[] @relation("TransferFromBranch")

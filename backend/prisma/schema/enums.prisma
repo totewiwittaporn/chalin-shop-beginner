@@ -63,3 +63,23 @@ enum PaymentMethod {
   TRANSFER
   CARD
 }
+
+enum PaymentKind {
+  CASH
+  TRANSFER
+  CARD
+}
+
+enum DocType {
+  BILL_CONSIGNMENT
+  RECEIPT_STANDARD
+  DELIVERY_BRANCH
+  DELIVERY_CONSIGNMENT
+}
+
+enum PartyKind {
+  MAIN
+  BRANCH
+  CONSIGNMENT
+  CUSTOMER
+}

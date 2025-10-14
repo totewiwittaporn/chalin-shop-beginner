@@ -1,0 +1,177 @@
+// client/src/nav.config.js
+export const MOBILE_GROUPS = (role = 'admin') => {
+  const r = String(role || '').toLowerCase();
+  const isAdmin = r === 'admin';
+
+  const groupsAdmin = [
+    {
+      id: 'sales',
+      label: 'Sales',
+      items: [
+        { to: '/pos/branch', label: 'POS — Branch' },
+        { to: '/pos/consignment', label: 'POS — Consignment' },
+        { to: '/docs/receipts', label: 'Receipts' },
+        { to: '/docs/consales', label: 'Consignment Bills' },
+      ],
+    },
+    {
+      id: 'delivery',
+      label: 'Delivery',
+      items: [
+        { to: '/delivery/branch', label: 'To Branch' },
+        { to: '/delivery/consignment', label: 'To Consignment' },
+        { to: '/docs/deliveries', label: 'Delivery Docs' },
+      ],
+    },
+    {
+      id: 'inventory',
+      label: 'Inventory',
+      items: [
+        { to: '/products', label: 'Products' },
+        { to: '/inventory', label: 'Warehouses' },
+        { to: '/inventory/count', label: 'Cycle Count' },
+        { to: '/transfers', label: 'Transfers' },
+      ],
+    },
+    {
+      id: 'consignment',
+      label: 'Consignment',
+      items: [
+        { to: '/consignment/shops', label: 'Shops' },
+        { to: '/consignment/categories', label: 'Categories' },
+        { to: '/consignment/categories/mapping', label: 'Category Mapping' },
+      ],
+    },
+    {
+      id: 'purchasing',
+      label: 'Purchasing',
+      items: [
+        { to: '/purchases', label: 'Purchases' },
+        { to: '/suppliers', label: 'Suppliers' },
+      ],
+    },
+    {
+      id: 'branches',
+      label: 'Branches',
+      items: [
+        { to: '/branches', label: 'Branches' },
+        { to: '/branches/sales', label: 'Branch Sales' },
+      ],
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      items: [
+        { to: '/docs/invoices', label: 'Invoices' },
+        { to: '/docs/quotes', label: 'Quotes' },
+        { to: '/docs/receipts', label: 'Receipts' },
+        { to: '/docs/deliveries', label: 'Deliveries' },
+        { to: '/docs/consales', label: 'Consignment Bills' },
+      ],
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      items: [
+        { to: '/settings', label: 'Main Settings' },
+        { to: '/settings/templates', label: 'Template Settings' },
+        { to: '/users', label: 'Users' },
+        { to: '/profile', label: 'Profile' },
+      ],
+    },
+  ];
+
+  if (isAdmin) return groupsAdmin;
+
+  if (r === 'staff') {
+    return [
+      {
+        id: 'sales',
+        label: 'Sales',
+        items: [
+          { to: '/pos/branch', label: 'POS — Branch' },
+          { to: '/docs/receipts', label: 'Receipts' },
+        ],
+      },
+      {
+        id: 'delivery',
+        label: 'Delivery',
+        items: [
+          { to: '/delivery/branch', label: 'To Branch' },
+          { to: '/docs/deliveries', label: 'Delivery Docs' },
+        ],
+      },
+      {
+        id: 'inventory',
+        label: 'Inventory',
+        items: [
+          { to: '/inventory', label: 'Warehouses' },
+          { to: '/inventory/count', label: 'Cycle Count' },
+        ],
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        items: [{ to: '/profile', label: 'Profile' }],
+      },
+    ];
+  }
+
+  if (r === 'consignment') {
+    return [
+      {
+        id: 'sales',
+        label: 'Sales',
+        items: [
+          { to: '/pos/consignment', label: 'POS — Consignment' },
+          { to: '/docs/consales', label: 'Consignment Bills' },
+          { to: '/docs/receipts', label: 'Receipts' },
+        ],
+      },
+      {
+        id: 'delivery',
+        label: 'Delivery',
+        items: [
+          { to: '/delivery/consignment', label: 'To Consignment' },
+          { to: '/docs/deliveries', label: 'Delivery Docs' },
+        ],
+      },
+      {
+        id: 'consignment',
+        label: 'Consignment',
+        items: [
+          { to: '/consignment/shops', label: 'Shops' },
+          { to: '/consignment/categories', label: 'Categories' },
+          { to: '/consignment/categories/mapping', label: 'Category Mapping' },
+        ],
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        items: [{ to: '/profile', label: 'Profile' }],
+      },
+    ];
+  }
+
+  if (r === 'quote-viewer') {
+    return [
+      {
+        id: 'products',
+        label: 'Products',
+        items: [{ to: '/products', label: 'Products' }],
+      },
+      {
+        id: 'reports',
+        label: 'Reports',
+        items: [{ to: '/docs/quotes', label: 'Quotes' }],
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        items: [{ to: '/profile', label: 'Profile' }],
+      },
+    ];
+  }
+
+  return groupsAdmin;
+};

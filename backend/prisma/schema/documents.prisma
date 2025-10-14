@@ -5,6 +5,11 @@ model Document {
   kind   DocKind
   status DocStatus @default(DRAFT)
 
+  issuerKind    PartyKind
+  issuerId      Int
+  recipientKind PartyKind
+  recipientId   Int
+
   docNo   String?  @unique
   docDate DateTime @default(now())
 
@@ -19,7 +24,8 @@ model Document {
 
   total Decimal @default(0) @db.Decimal(12, 2)
 
-  items DocumentItem[]
+  items    DocumentItem[]
+  payments DocumentPayment[]
 
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -48,4 +54,23 @@ model DocumentItem {
 
   @@index([documentId])
   @@index([productId])
+}
+
+model DocumentPayment {
+  id         Int         @id @default(autoincrement())
+  documentId Int
+  kind       PaymentKind
+  amount     Decimal     @db.Decimal(14, 2)
+
+  branchBankAccountId  Int?
+  partnerBankAccountId Int?
+
+  // snapshot กันการเปลี่ยนแปลงภายหลัง
+  bankNameSnapshot    String?
+  accountNoSnapshot   String?
+  accountNameSnapshot String?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }

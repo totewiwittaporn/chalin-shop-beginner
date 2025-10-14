@@ -1,17 +1,13 @@
+// App.jsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-
-// หน้า public
 import PreAuthLanding from '@/pages/auth/PreAuthLanding';
 import Login from '@/pages/auth/Login';
 import SignUp from '@/pages/auth/SignUp';
 
-// เลย์เอาต์หลัก (Navbar + Sidebar)
 import AppShell from '@/components/layout/AppShell';
+import RequireAuth from '@/components/auth/RequireAuth';
 
-// ตัวจัดเส้นทางไป dashboard ตาม role (router หลักของหน้า dashboard เท่านั้น)
 import DashboardRouter from '@/pages/dashboard/DashboardRouter';
-
-// หน้าภายใน
 import AdminDashboard from '@/pages/dashboard/AdminDashboard';
 import StaffDashboard from '@/pages/dashboard/StaffDashboard';
 import ConsignmentDashboard from '@/pages/dashboard/ConsignmentDashboard';
@@ -27,10 +23,15 @@ import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import InventoryCountPage from "@/pages/inventory/InventoryCountPage";
 import TransfersPage from '@/pages/transfers/TransfersPage';
-import PosPage from '@/pages/pos/PosPage.jsx';
 import UsersPage from "@/pages/users/UsersPage.jsx";
 
-// เอกสาร
+// ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
+import BranchPOS from '@/pages/pos/BranchPOS';
+import ConsignmentPOS from '@/pages/pos/ConsignmentPOS';
+import BranchDelivery from '@/pages/delivery/BranchDelivery';
+import ConsignmentDelivery from '@/pages/delivery/ConsignmentDelivery';
+
+// Docs
 import DocsHome from '@/pages/docs/DocsHome';
 import DeliveryDocs from '@/pages/docs/DeliveryDocs';
 import ConsaleDocs from '@/pages/docs/ConsaleDocs';
@@ -39,33 +40,34 @@ import ReceiptDocs from '@/pages/docs/ReceiptDocs';
 import QuoteDocs from '@/pages/docs/QuoteDocs';
 import DocPreview from '@/pages/docs/DocPreview';
 
-import RequireAuth from '@/components/auth/RequireAuth.jsx';
-
 const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || "/";
 
 export default function App() {
   return (
     <BrowserRouter basename={BASENAME}>
       <Routes>
-        {/* ===== Public routes (ไม่ต้องล็อกอิน) ===== */}
+        {/* Public */}
         <Route path="/" element={<PreAuthLanding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUp />} />
 
-        {/* ===== Protected routes (ต้องมี token) ===== */}
+        {/* Protected root: ต้องล็อกอินก่อน ถึงจะเห็น AppShell + ทุกเพจด้านใน */}
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
+            {/* Dashboards */}
             <Route path="/dashboard" element={<DashboardRouter />} />
             <Route path="/dashboard/admin" element={<AdminDashboard />} />
             <Route path="/dashboard/staff" element={<StaffDashboard />} />
             <Route path="/dashboard/consignment" element={<ConsignmentDashboard />} />
 
+            {/* Base feature pages (เดิม) */}
             <Route path="/viewer/welcome" element={<QuoteViewerWelcome />} />
-
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/sales" element={<BranchSalesPage />} />
-            <Route path="/branches/delivery" element={<BranchDeliveryPage />} />
+            {/* เก็บ route เก่าไว้ช่วงเปลี่ยนผ่าน แต่พอย้ายเมนูแล้วจะใช้ตัวใหม่แทน */}
+            <Route path="/branches/delivery" element={<BranchDelivery />} />
+
             <Route path="/consignment/shops" element={<ConsignmentShopsPage />} />
             <Route path="/consignment/categories/mapping" element={<ConsignmentCategoryMappingPage />} />
             <Route path="/consignment/categories" element={<ConsignmentCategoriesPage />} />
@@ -74,9 +76,25 @@ export default function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/inventory/count" element={<InventoryCountPage />} />
             <Route path="/transfers" element={<TransfersPage />} />
-            <Route path="/pos" element={<PosPage />} />
             <Route path="/users" element={<UsersPage />} />
 
+            {/* POS — แยกสองฝั่ง (ใช้ Outlet-pattern ครอบสิทธิ์) */}
+            <Route element={<RequireAuth roles={['ADMIN','STAFF']} />}>
+              <Route path="/pos/branch" element={<BranchPOS />} />
+            </Route>
+            <Route element={<RequireAuth roles={['ADMIN','CONSIGNMENT']} />}>
+              <Route path="/pos/consignment" element={<ConsignmentPOS />} />
+            </Route>
+
+            {/* Delivery — แยกสองฝั่ง */}
+            <Route element={<RequireAuth roles={['ADMIN','STAFF']} />}>
+              <Route path="/delivery/branch" element={<BranchDelivery />} />
+            </Route>
+            <Route element={<RequireAuth roles={['ADMIN','CONSIGNMENT']} />}>
+              <Route path="/delivery/consignment" element={<ConsignmentDelivery />} />
+            </Route>
+
+            {/* Docs */}
             <Route path="/docs" element={<DocsHome />}>
               <Route path="deliveries" element={<DeliveryDocs />} />
               <Route path="consales" element={<ConsaleDocs />} />
