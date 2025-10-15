@@ -4,7 +4,10 @@ model ConsignmentPartner {
   id                Int           @id @default(autoincrement())
   code              String        @unique
   name              String
-  displayIdentity   String? // "ชื่อ/เบอร์/เลขภาษี/เลขบัตร" ช่องเดียว
+  phone             String? // เบอร์โทร
+  taxId             String? // เลขผู้เสียภาษี
+  commissionRate    Float? // ค่าคอมมิชชัน (%), เว้นว่างได้
+  isActive          Boolean       @default(true) //ใช้งานอยู่หรือป่าว
   addressLine1      String?
   addressLine2      String?
   addressLine3      String?

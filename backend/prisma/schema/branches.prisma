@@ -1,14 +1,22 @@
 // prisma/schema/branches.prisma
 
 model Branch {
-  id             Int      @id @default(autoincrement())
-  code           String   @unique // เช่น PNA-KRBR-GVT
-  name           String
-  addressLine1   String?
-  addressLine2   String?
-  addressLine3   String?
-  commissionRate Decimal? @db.Decimal(5, 2)
-  isActive       Boolean  @default(true)
+  id           Int     @id @default(autoincrement())
+  code         String  @unique // เช่น PNA-KRBR-GVT
+  name         String
+  addressLine1 String?
+  addressLine2 String?
+  addressLine3 String?
+
+  // ✅ เพิ่มใหม่
+  phone  String? // เบอร์โทร
+  taxId  String? // เลขผู้เสียภาษี
+  isMain Boolean @default(false) // เป็นสาขาหลักหรือไม่
+
+  // มีอยู่แล้วก็ใช้ต่อได้ ถ้ายังไม่มี ให้เพิ่ม
+  commissionRate Float? // ค่าคอมมิชชัน (%), เว้นว่างได้
+
+  isActive Boolean @default(true)
 
   // relations
   users     User[]
