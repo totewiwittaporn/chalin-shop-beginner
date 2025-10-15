@@ -23,6 +23,8 @@ import ordersRoutes from "#app/routes/orders/orders.routes.js";
 import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
 import transfersRoutes from "#app/routes/transfers/transfers.routes.js";
 import bankAccountsRoutes from '#app/routes/bank/bank-accounts.routes.js';
+import consignmentMeRoutes from "#app/routes/consignment/consignment.me.routes.js";
+import deliveriesRoutes from "#app/routes/deliveries/deliveries.routes.js";
 
 export function mountPublicRoutes(app) {
   app.use("/api/auth", authRoutes);
@@ -40,6 +42,7 @@ export function mountProtectedRoutes(app) {
   // Consignment
   app.use("/api/consignment/partners", consignmentPartnersRoutes);
   app.use("/api/consignment/categories", consignmentCategoriesRoutes);
+  app.use("/api/consignment/me", consignmentMeRoutes); // ✅ เพิ่มบรรทัดนี้
 
   // Others
   app.use("/api/suppliers", suppliersRoutes);
@@ -48,4 +51,6 @@ export function mountProtectedRoutes(app) {
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/transfers", transfersRoutes);
   app.use('/api', bankAccountsRoutes);
+  app.use("/api/deliveries", deliveriesRoutes); // ✅ เพิ่ม
+
 }

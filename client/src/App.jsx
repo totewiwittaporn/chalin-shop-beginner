@@ -14,7 +14,8 @@ import ConsignmentDashboard from '@/pages/dashboard/ConsignmentDashboard';
 import QuoteViewerWelcome from '@/pages/viewer/QuoteViewerWelcome';
 
 import ProductsPage from '@/pages/products/ProductsPage';
-import { BranchesPage, BranchSalesPage, BranchDeliveryPage } from '@/pages/branches';
+import BranchesPage from '@/pages/branches/BranchesPage';
+import BranchSalesPage from '@/pages/branches/BranchSalesPage';
 import ConsignmentShopsPage from '@/pages/consignment/ConsignmentShopsPage';
 import ConsignmentCategoriesPage from "@/pages/consignment/ConsignmentCategoriesPage";
 import ConsignmentCategoryMappingPage from "@/pages/consignment/ConsignmentCategoryMappingPage";
@@ -28,7 +29,7 @@ import UsersPage from "@/pages/users/UsersPage.jsx";
 // ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
 import BranchPOS from '@/pages/pos/BranchPOS';
 import ConsignmentPOS from '@/pages/pos/ConsignmentPOS';
-import BranchDelivery from '@/pages/delivery/BranchDelivery';
+import BranchDelivery from "@/pages/delivery/BranchDelivery";
 import ConsignmentDelivery from '@/pages/delivery/ConsignmentDelivery';
 
 // Docs
