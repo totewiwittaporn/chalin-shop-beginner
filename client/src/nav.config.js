@@ -5,32 +5,11 @@ export const MOBILE_GROUPS = (role = 'admin') => {
 
   const groupsAdmin = [
     {
-      id: 'sales',
-      label: 'Sales',
+      id: 'branches',
+      label: 'Branches',
       items: [
-        { to: '/pos/branch', label: 'POS — Branch' },
-        { to: '/pos/consignment', label: 'POS — Consignment' },
-        { to: '/docs/receipts', label: 'Receipts' },
-        { to: '/docs/consales', label: 'Consignment Bills' },
-      ],
-    },
-    {
-      id: 'delivery',
-      label: 'Delivery',
-      items: [
-        { to: '/delivery/branch', label: 'To Branch' },
-        { to: '/delivery/consignment', label: 'To Consignment' },
-        { to: '/docs/deliveries', label: 'Delivery Docs' },
-      ],
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      items: [
-        { to: '/products', label: 'Products' },
-        { to: '/inventory', label: 'Warehouses' },
-        { to: '/inventory/count', label: 'Cycle Count' },
-        { to: '/transfers', label: 'Transfers' },
+        { to: '/branches', label: 'Branches' },
+        { to: '/branches/sales', label: 'Branch Sales' },
       ],
     },
     {
@@ -43,6 +22,31 @@ export const MOBILE_GROUPS = (role = 'admin') => {
       ],
     },
     {
+      id: 'inventory',
+      label: 'Inventory',
+      items: [
+        { to: '/products', label: 'Products' },
+        { to: '/inventory', label: 'Warehouses' },
+        { to: '/inventory/count', label: 'Cycle Count' },
+      ],
+    },
+    {
+      id: 'delivery',
+      label: 'Delivery',
+      items: [
+        { to: '/delivery/branch', label: 'To Branch' },
+        { to: '/delivery/consignment', label: 'To Consignment' },
+      ],
+    },
+    {
+      id: 'sales',
+      label: 'Sales',
+      items: [
+        { to: '/pos/branch', label: 'POS — Branch' },
+        { to: '/pos/consignment', label: 'POS — Consignment' },
+      ],
+    },
+    {
       id: 'purchasing',
       label: 'Purchasing',
       items: [
@@ -50,25 +54,7 @@ export const MOBILE_GROUPS = (role = 'admin') => {
         { to: '/suppliers', label: 'Suppliers' },
       ],
     },
-    {
-      id: 'branches',
-      label: 'Branches',
-      items: [
-        { to: '/branches', label: 'Branches' },
-        { to: '/branches/sales', label: 'Branch Sales' },
-      ],
-    },
-    {
-      id: 'reports',
-      label: 'Reports',
-      items: [
-        { to: '/docs/invoices', label: 'Invoices' },
-        { to: '/docs/quotes', label: 'Quotes' },
-        { to: '/docs/receipts', label: 'Receipts' },
-        { to: '/docs/deliveries', label: 'Deliveries' },
-        { to: '/docs/consales', label: 'Consignment Bills' },
-      ],
-    },
+
     {
       id: 'settings',
       label: 'Settings',
@@ -98,7 +84,6 @@ export const MOBILE_GROUPS = (role = 'admin') => {
         label: 'Delivery',
         items: [
           { to: '/delivery/branch', label: 'To Branch' },
-          { to: '/docs/deliveries', label: 'Delivery Docs' },
         ],
       },
       {

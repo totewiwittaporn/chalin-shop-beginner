@@ -3,7 +3,7 @@ import { Router } from "express";
 import prisma from "#app/lib/prisma.js";
 import { requireAuth, requireRole } from "#app/middleware/auth.js";
 
-// ✅ helper หา main branch
+// ✅ helper หา main branch (ไม่มี isMain จะ fallback ที่ code)
 async function getMainBranchId() {
   try {
     const main = await prisma.branch.findFirst({
@@ -24,9 +24,9 @@ const router = Router();
 
 /**
  * GET /api/branches/options
- * ใช้แสดงใน dropdown ของหน้า Delivery
+ * ใช้สำหรับ dropdown ของหน้า Delivery
  * - ADMIN → เห็นทุกสาขา
- * - STAFF → เห็นเฉพาะสาขาของตัวเอง + MAIN
+ * - STAFF → เห็นเฉพาะ [สาขาตัวเอง, MAIN]
  */
 router.get("/options", requireAuth, requireRole("ADMIN", "STAFF"), async (req, res, next) => {
   try {
@@ -54,6 +54,7 @@ router.get("/options", requireAuth, requireRole("ADMIN", "STAFF"), async (req, r
 /**
  * GET /api/branches
  * ใช้แสดงในหน้าตาราง “จัดการสาขา”
+ * - map addressLine1/2/3 → address (สตริงเดียว) ให้ตรงกับ UI
  */
 router.get("/", requireAuth, async (_req, res, next) => {
   try {
@@ -63,14 +64,24 @@ router.get("/", requireAuth, async (_req, res, next) => {
         id: true,
         code: true,
         name: true,
-        address: true,
-        commissionRate: true,
-        createdAt: true,
-        updatedAt: true,
-        isMain: true,
+        addressLine1: true,
+        addressLine2: true,
+        addressLine3: true,
+        // ❌ อย่า select ฟิลด์ที่ schema ไม่มี เช่น commissionRate, isMain, createdAt, updatedAt
       },
     });
-    res.json(rows);
+
+    const mapped = rows.map((b) => ({
+      id: b.id,
+      code: b.code,
+      name: b.name,
+      address: [b.addressLine1, b.addressLine2, b.addressLine3]
+        .filter(Boolean)
+        .join("\n") || null,
+      commissionRate: null, // schema ไม่มีฟิลด์นี้ → ให้ UI แสดง "-"
+    }));
+
+    res.json(mapped);
   } catch (e) {
     next(e);
   }
@@ -78,30 +89,42 @@ router.get("/", requireAuth, async (_req, res, next) => {
 
 /**
  * POST /api/branches (ADMIN)
+ * - เก็บ address ลง addressLine1 (ชั่วคราว)
+ * - ละเลย commissionRate ถ้า schema ไม่มี
  */
 router.post("/", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
   try {
-    const { code, name, address, commissionRate, isMain } = req.body;
+    const { code, name, address /* commissionRate, isMain */ } = req.body;
     if (!code?.trim() || !name?.trim()) {
       return res.status(400).json({ error: "code และ name ต้องไม่ว่าง" });
     }
 
     const normalizedCode = String(code).toUpperCase().replace(/\s+/g, "-");
-    const rateNum = commissionRate == null ? null : Number(commissionRate);
-    if (rateNum != null && (isNaN(rateNum) || rateNum < 0 || rateNum > 100)) {
-      return res.status(400).json({ error: "commissionRate ต้องเป็นตัวเลข 0–100" });
-    }
 
     const created = await prisma.branch.create({
       data: {
         code: normalizedCode,
         name: String(name).trim(),
-        address: String(address || "").trim() || null,
-        commissionRate: rateNum == null ? null : rateNum,
-        isMain: !!isMain,
+        addressLine1: String(address || "").trim() || null,
+        // ❌ ไม่มี commissionRate / isMain ใน schema ปัจจุบัน
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        addressLine1: true,
+        addressLine2: true,
+        addressLine3: true,
       },
     });
-    res.status(201).json(created);
+
+    res.status(201).json({
+      id: created.id,
+      code: created.code,
+      name: created.name,
+      address: [created.addressLine1, created.addressLine2, created.addressLine3].filter(Boolean).join("\n") || null,
+      commissionRate: null,
+    });
   } catch (e) {
     next(e);
   }
@@ -109,28 +132,40 @@ router.post("/", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
 
 /**
  * PUT /api/branches/:id (ADMIN)
+ * - อัปเดต address → addressLine1
+ * - ละเลย commissionRate / isMain ถ้า schema ไม่มี
  */
 router.put("/:id", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ error: "id ไม่ถูกต้อง" });
 
-    const { code, name, address, commissionRate, isMain } = req.body;
+    const { code, name, address /* commissionRate, isMain */ } = req.body;
     const data = {};
     if (code !== undefined) data.code = String(code).toUpperCase().replace(/\s+/g, "-");
     if (name !== undefined) data.name = String(name).trim();
-    if (address !== undefined) data.address = String(address || "").trim() || null;
-    if (commissionRate !== undefined) {
-      const rateNum = Number(commissionRate);
-      if (isNaN(rateNum) || rateNum < 0 || rateNum > 100) {
-        return res.status(400).json({ error: "commissionRate ต้องเป็นตัวเลข 0–100" });
-      }
-      data.commissionRate = rateNum;
-    }
-    if (isMain !== undefined) data.isMain = !!isMain;
+    if (address !== undefined) data.addressLine1 = String(address || "").trim() || null;
 
-    const updated = await prisma.branch.update({ where: { id }, data });
-    res.json(updated);
+    const updated = await prisma.branch.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        addressLine1: true,
+        addressLine2: true,
+        addressLine3: true,
+      },
+    });
+
+    res.json({
+      id: updated.id,
+      code: updated.code,
+      name: updated.name,
+      address: [updated.addressLine1, updated.addressLine2, updated.addressLine3].filter(Boolean).join("\n") || null,
+      commissionRate: null,
+    });
   } catch (e) {
     next(e);
   }

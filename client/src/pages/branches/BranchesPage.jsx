@@ -2,21 +2,37 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "@/components/ui/Card.jsx";
 import Table from "@/components/ui/Table.jsx";
 import Button from "@/components/ui/Button.jsx";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, X } from "lucide-react";
 import { getBranches, createBranch, updateBranch } from "@/services/branches.api.js";
 import { useAuthStore } from "@/store/authStore.js";
 
-/* ---------- Dialog infra ---------- */
+/* ---------- Dialog infra (ธีม Glass-Blue) ---------- */
 function DialogBase({ title, children, actions, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-[95vw] max-w-xl rounded-2xl shadow-xl bg-white">
-        <div className="px-5 pt-5">
-          <div className="text-lg font-semibold text-slate-800 mb-2">{title}</div>
+    <div className="fixed inset-0 z-[100]">
+      {/* backdrop เบลอ */}
+      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-md" onClick={onClose} />
+      {/* กล่อง gradient + กล่องขาว */}
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          className="w-[95vw] max-w-2xl rounded-3xl p-[2px] shadow-2xl"
+          style={{ background: "linear-gradient(135deg,#7aa6ff,#b8c7ff)" }}
+        >
+          <div className="rounded-3xl bg-[#f6f9ff]">
+            <div className="flex items-center justify-between p-5">
+              <div className="text-lg font-semibold text-slate-700">{title}</div>
+              <button
+                className="rounded-full p-2 hover:bg-slate-200/70 transition"
+                onClick={onClose}
+                aria-label="close"
+              >
+                <X className="w-5 h-5 text-slate-700" />
+              </button>
+            </div>
+            <div className="px-5 pb-2">{children}</div>
+            <div className="px-5 pb-5 flex justify-end gap-2">{actions}</div>
+          </div>
         </div>
-        <div className="px-5 pb-2">{children}</div>
-        <div className="px-5 py-4 flex justify-end gap-2">{actions}</div>
       </div>
     </div>
   );
@@ -26,18 +42,40 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
   const [code, setCode] = useState(initial.code || "");
   const [name, setName] = useState(initial.name || "");
   const [address, setAddress] = useState(initial.address || "");
+  const [address2, setAddress2] = useState(initial.addressLine2 || "");
+  const [address3, setAddress3] = useState(initial.addressLine3 || "");
+  const [phone, setPhone] = useState(initial.phone || "");
+  const [taxId, setTaxId] = useState(initial.taxId || "");
+  const [isMain, setIsMain] = useState(!!initial.isMain);
   const [commission, setCommission] = useState(
     typeof initial.commissionRate === "number" ? String(initial.commissionRate) : ""
   );
 
   const normalizedCode = (code || "").toUpperCase().replace(/\s+/g, "-");
-  const canSave =
-    normalizedCode.trim() &&
-    name.trim() &&
-    commission !== "" &&
-    !isNaN(parseFloat(commission)) &&
-    parseFloat(commission) >= 0 &&
-    parseFloat(commission) <= 100;
+  // ผ่อนเงื่อนไข: บังคับแค่ code + name
+  const canSave = normalizedCode.trim() && name.trim();
+
+  const handleSave = () => {
+    // สร้าง payload แบบ “ส่งเฉพาะคีย์ที่มีค่า” เพื่อลดการชน schema
+    const payload = {};
+    const put = (k, v) => {
+      if (v !== "" && v !== undefined && v !== null) payload[k] = v;
+    };
+
+    put("code", normalizedCode);
+    put("name", name.trim());
+    put("address", address.trim() || null);        // backend map → addressLine1
+    put("addressLine2", address2.trim() || null);  // ถ้า schema มี จะอัปเดต
+    put("addressLine3", address3.trim() || null);  // ถ้า schema มี จะอัปเดต
+    put("phone", phone.trim() || null);            // ถ้า schema มี
+    put("taxId", taxId.trim() || null);            // ถ้า schema มี
+    // isMain ให้ส่งเสมอเป็น boolean ถ้า backend รองรับ; ถ้าไม่รองรับจะถูกละไว้ ไม่กระทบ
+    payload.isMain = !!isMain;
+    // commissionRate เป็นออปชัน
+    if (commission !== "") payload.commissionRate = Number(commission);
+
+    onSave?.(payload);
+  };
 
   return (
     <DialogBase
@@ -48,62 +86,99 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
           <Button kind="danger" onClick={onClose} disabled={busy}>
             ยกเลิก
           </Button>
-          <Button
-            kind="success"
-            loading={busy}
-            disabled={!canSave || busy}
-            onClick={() =>
-              onSave({
-                code: normalizedCode,
-                name: name.trim(),
-                address: address.trim() || null,
-                commissionRate: parseFloat(commission),
-              })
-            }
-          >
+          <Button kind="success" loading={busy} disabled={!canSave || busy} onClick={handleSave}>
             บันทึก
           </Button>
         </>
       }
     >
-      <div className="grid gap-3">
-        <div>
-          <label className="block text-sm text-slate-600 mb-1">
-            รหัสสาขา <span className="text-xs">(เช่น PNA-KRBR-GVT)</span>
-          </label>
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="เช่น PNA-KRBR-GVT"
-          />
-          <div className="text-xs text-slate-500 mt-1">
-            จะถูกบันทึกเป็น: <b>{normalizedCode || "-"}</b>
+      <div className="grid gap-4">
+        {/* รหัส + ตั้งเป็น MAIN */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2">
+            <label className="block text-xs text-slate-600 mb-1">รหัสสาขา</label>
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="เช่น MAIN / BR-GVT"
+            />
+            <div className="text-xs text-slate-500 mt-1">
+              จะถูกบันทึกเป็น: <b>{normalizedCode || "-"}</b>
+            </div>
           </div>
+          <label className="flex items-end gap-2">
+            <input
+              type="checkbox"
+              className="scale-110 accent-blue-500 mt-6"
+              checked={isMain}
+              onChange={(e) => setIsMain(e.target.checked)}
+            />
+            <span className="text-sm text-slate-700">ตั้งเป็น MAIN</span>
+          </label>
         </div>
 
+        {/* ชื่อสาขา */}
         <div>
-          <label className="block text-sm text-slate-600 mb-1">ชื่อร้านสาขา</label>
+          <label className="block text-xs text-slate-600 mb-1">ชื่อร้านสาขา</label>
           <input
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="เช่น CLS-GVT"
+            placeholder="เช่น Chalin Shop"
           />
         </div>
 
+        {/* ที่อยู่ */}
         <div>
-          <label className="block text-sm text-slate-600 mb-1">ที่อยู่</label>
+          <label className="block text-xs text-slate-600 mb-1">ที่อยู่ (บรรทัดที่ 1)</label>
           <textarea
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none min-h-[90px] text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="เช่น 140/8 หมู่ 3 ..."
           />
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+              value={address2}
+              onChange={(e) => setAddress2(e.target.value)}
+              placeholder="ที่อยู่บรรทัด 2 (ถ้ามี)"
+            />
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+              value={address3}
+              onChange={(e) => setAddress3(e.target.value)}
+              placeholder="ที่อยู่บรรทัด 3 (ถ้ามี)"
+            />
+          </div>
         </div>
 
+        {/* ติดต่อ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">เบอร์โทร</label>
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="เช่น 08x-xxx-xxxx"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-600 mb-1">เลขภาษี (ถ้ามี)</label>
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+              value={taxId}
+              onChange={(e) => setTaxId(e.target.value)}
+              placeholder="เลขผู้เสียภาษี 13 หลัก"
+            />
+          </div>
+        </div>
+
+        {/* ค่าคอมมิชชั่น (ออปชัน) */}
         <div>
-          <label className="block text-sm text-slate-600 mb-1">ค่าคอมมิชชั่น (%)</label>
+          <label className="block text-xs text-slate-600 mb-1">ค่าคอมมิชชั่น (%)</label>
           <input
             type="number"
             min="0"
@@ -114,7 +189,7 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
             onChange={(e) => setCommission(e.target.value)}
             placeholder="เช่น 10"
           />
-          <div className="text-xs text-slate-500 mt-1">0–100% เท่านั้น</div>
+          <div className="text-xs text-slate-500 mt-1">0–100% เท่านั้น (เว้นว่างได้)</div>
         </div>
       </div>
     </DialogBase>
@@ -217,12 +292,10 @@ export default function BranchesPage() {
 
           {/* ส่วนที่ 2 — ตาราง */}
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
-            {/* ⬇️ กล่องชั้นใน: บังคับสีตัวอักษร + ธีมตาราง */}
             <div
               className={[
                 "rounded-2xl bg-white/95 p-2 sm:p-3 md:p-4",
                 "text-slate-800",
-                // สี header/cell + แถวสลับสี + hover
                 "[&_thead_th]:text-slate-600 [&_thead_th]:font-semibold",
                 "[&_tbody_td]:text-slate-800",
                 "[&_tbody_tr:nth-child(even)_td]:bg-slate-50/60",
@@ -298,7 +371,13 @@ export default function BranchesPage() {
           mode="create"
           busy={saving}
           onClose={() => setCreating(false)}
-          onSave={handleCreate}
+          onSave={(payload) => {
+            setSaving(true);
+            createBranch(payload)
+              .then((created) => setRows((prev) => [...prev, created]))
+              .catch((e) => alert(e?.response?.data?.error || "บันทึกสาขาไม่สำเร็จ"))
+              .finally(() => setSaving(false));
+          }}
         />
       )}
       {editing && (
@@ -307,7 +386,13 @@ export default function BranchesPage() {
           initial={editing}
           busy={saving}
           onClose={() => setEditing(null)}
-          onSave={(payload) => handleUpdate(editing.id, payload)}
+          onSave={(payload) => {
+            setSaving(true);
+            updateBranch(editing.id, payload)
+              .then((updated) => setRows((prev) => prev.map((x) => (x.id === editing.id ? updated : x))))
+              .catch((e) => alert(e?.response?.data?.error || "แก้ไขสาขาไม่สำเร็จ"))
+              .finally(() => setSaving(false));
+          }}
         />
       )}
     </div>

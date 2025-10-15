@@ -6,43 +6,60 @@ const r = express.Router();
 
 /**
  * GET /api/products
- * query: q, page=1, pageSize=20
+ * query: q, page=1, pageSize=20, limit (alias ของ pageSize)
+ * response: { items, total, page, pageSize }
  */
 r.get("/", requireAuth, async (req, res, next) => {
   try {
+    // ✨ กัน cache เพื่อเลี่ยง 304 ที่ทำให้ dropdown ไม่อัปเดต
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+
     const q = String(req.query.q || "").trim();
+
+    // รองรับทั้ง pageSize และ limit (ให้ limit เป็น alias)
     const page = Math.max(1, parseInt(String(req.query.page || "1"), 10));
+    const pageSizeRaw =
+      req.query.limit != null ? req.query.limit : req.query.pageSize;
     const pageSize = Math.min(
       100,
-      Math.max(1, parseInt(String(req.query.pageSize || "20"), 10))
+      Math.max(1, parseInt(String(pageSizeRaw || "20"), 10))
     );
     const skip = (page - 1) * pageSize;
 
     const role = String(req.user.role || "").toUpperCase();
     const branchId = req.user.branchId ?? null;
 
-    const where = {
-      AND: [
-        q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { barcode: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        role === "ADMIN"
-          ? {}
-          : branchId
-          ? { OR: [{ branchId: branchId }, { branchId: null }] }
-          : { branchId: null },
-      ],
-    };
+    // ปรับเงื่อนไขค้นหา: name contains, barcode contains/startsWith/equals
+    const textWhere = q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { barcode: { contains: q, mode: "insensitive" } },
+            { barcode: { startsWith: q, mode: "insensitive" } },
+            { barcode: { equals: q, mode: "insensitive" } },
+          ],
+        }
+      : {};
+
+    // ขอบเขตการมองเห็นตาม role (ADMIN = ทั้งหมด, STAFF = สาขาตัวเอง+global(null))
+    const scopeWhere =
+      role === "ADMIN"
+        ? {}
+        : branchId
+        ? { OR: [{ branchId: branchId }, { branchId: null }] }
+        : { branchId: null };
+
+    const where = { AND: [textWhere, scopeWhere] };
+
+    // ถ้ามีคำค้น ให้เรียงชื่อตามตัวอักษร (อ่านง่ายใน dropdown), ไม่งั้นใช้ createdAt desc
+    const orderBy = q ? { name: "asc" } : { createdAt: "desc" };
 
     const [items, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: pageSize,
         select: {
@@ -111,7 +128,6 @@ r.post(
  * GET /api/products/low-stock?lt=10&partnerId=...
  * - ADMIN/STAFF: ดูทั้งหมด หรือกำหนด partnerId
  * - CONSIGNMENT: เห็นเฉพาะ partnerId ของตัวเอง
- * ใช้ ConsignmentInventory จาก schema จริง
  */
 r.get(
   "/low-stock",
@@ -119,14 +135,13 @@ r.get(
   requireRole("ADMIN", "STAFF", "CONSIGNMENT"),
   async (req, res, next) => {
     try {
-      const lt = Math.max(0, Number(req.query.lt ?? 10)); // เกณฑ์ “ใกล้หมด”
-      const take = Math.min(Math.max(1, Number(req.query.take ?? 50)), 200); // จำกัดจำนวน
+      const lt = Math.max(0, Number(req.query.lt ?? 10));
+      const take = Math.min(Math.max(1, Number(req.query.take ?? 50)), 200);
       const role = String(req.user.role).toUpperCase();
 
       let items = [];
 
       if (role === "CONSIGNMENT") {
-        // ร้านฝากขาย: ดูสต็อกของ partner ตัวเอง
         const partnerId = req.user.partnerId ?? null;
         if (!partnerId) return res.json([]);
 
@@ -140,12 +155,9 @@ r.get(
         items = rows.map((r) => ({
           id: r.productId,
           name: r.product?.name ?? null,
-          stock: r.qty, // ปริมาณคงเหลือในฝั่ง consignment
-          location: "CONSIGNMENT",
-          partnerId,
+          stockQty: r.qty,
         }));
       } else if (role === "STAFF" && req.user.branchId) {
-        // พนักงานสาขา: ดูสต็อกของสาขาตัวเอง
         const branchId = req.user.branchId;
 
         const rows = await prisma.inventory.findMany({
@@ -158,18 +170,15 @@ r.get(
         items = rows.map((r) => ({
           id: r.productId,
           name: r.product?.name ?? null,
-          stock: r.qty, // คงเหลือของสาขานี้
-          location: "BRANCH",
-          branchId,
+          stockQty: r.qty,
         }));
       } else {
-        // ADMIN: รวมทุกสาขา -> สรุปยอดคงเหลือต่อสินค้า แล้วกรอง <= lt
-        // (หมายเหตุ: ใช้วิธีรวมฝั่งแอพเพื่อความเรียบง่าย/ปลอดภัย)
+        // ADMIN: รวมทุกสาขาแล้วกรอง
         const rows = await prisma.inventory.findMany({
-          where: { qty: { lte: lt } }, // ดึงเฉพาะที่ต่ำกว่าเกณฑ์เพื่อลดปริมาณข้อมูล
+          where: { qty: { lte: lt } },
           include: { product: true },
           orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
-          take: 1000, // ดึงกว้างหน่อยเพื่อสรุป แล้วค่อย slice ภายหลัง
+          take: 1000,
         });
 
         const sumByProduct = new Map();
@@ -178,30 +187,22 @@ r.get(
           const cur = sumByProduct.get(key) || {
             id: r.productId,
             name: r.product?.name ?? null,
-            stock: 0,
+            stockQty: 0,
           };
-          cur.stock += Number(r.qty || 0);
+          cur.stockQty += Number(r.qty || 0);
           sumByProduct.set(key, cur);
         }
 
         items = Array.from(sumByProduct.values())
-          .filter((it) => it.stock <= lt)
+          .filter((it) => it.stockQty <= lt)
           .sort(
             (a, b) =>
-              a.stock - b.stock || String(a.name).localeCompare(String(b.name))
+              a.stockQty - b.stockQty ||
+              String(a.name).localeCompare(String(b.name))
           )
           .slice(0, take);
       }
 
-      const mapped = items.map((it) => ({
-        id: it.id,
-        name: it.name,
-        barcode: it.barcode,
-        stockQty: it.stock ?? 0, // <-- เปลี่ยนชื่อฟิลด์ให้ตรง FE
-      }));
-      return res.json(mapped);
-
-      // ✅ สำคัญ: คืน “อาเรย์ตรงๆ” เพื่อให้ StaffDashboard ใช้ .slice() ได้
       return res.json(items);
     } catch (e) {
       next(e);

@@ -5,13 +5,10 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import * as Table from "@/components/ui/Table.jsx";
 import GradientPanel from "@/components/theme/GradientPanel";
-// ✅ ใช้ named export ให้ตรงกับไฟล์ของคุณ
 import { useAuthStore } from "@/store/authStore";
 
 export default function BranchDeliveryPage() {
   const nav = useNavigate();
-
-  // ✅ ดึง user จาก store ของคุณ (ในไฟล์คุณใช้ key 'user')
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "ADMIN";
 
@@ -32,7 +29,7 @@ export default function BranchDeliveryPage() {
     })();
   }, []);
 
-  // ค้นหาสินค้า
+  // ค้นหาสินค้า (อ่านได้ทั้งรูปแบบ [] หรือ { items: [] })
   useEffect(() => {
     let on = true;
     (async () => {
@@ -40,10 +37,15 @@ export default function BranchDeliveryPage() {
         setSearchResults([]);
         return;
       }
-      const r = await api.get("/api/products", { params: { q: query, limit: 10 } }).catch(() => ({ data: [] }));
-      if (!on) return;
-      const arr = Array.isArray(r.data) ? r.data : (Array.isArray(r.data?.items) ? r.data.items : []);
-      setSearchResults(arr.slice(0, 10));
+      const r = await api
+        .get("/api/products", { params: { q: query, limit: 10 } })
+        .catch(() => ({ data: [] }));
+      const arr = Array.isArray(r.data)
+        ? r.data
+        : Array.isArray(r.data?.items)
+        ? r.data.items
+        : [];
+      if (on) setSearchResults(arr.slice(0, 10));
     })();
     return () => { on = false; };
   }, [query]);
@@ -63,7 +65,6 @@ export default function BranchDeliveryPage() {
   const canSubmit = useMemo(() => {
     if (!lines.some(l => Number(l.qty) > 0)) return false;
     if (isAdmin) return issuer && recipient && issuer !== recipient;
-    // STAFF: backend จะบังคับ issuer=สาขาตัวเอง, recipient=Main (จาก /options)
     return !!recipient && recipient !== String(user?.branchId || "");
   }, [issuer, recipient, lines, isAdmin, user]);
 
@@ -76,7 +77,7 @@ export default function BranchDeliveryPage() {
         items: lines.filter(l => Number(l.qty) > 0).map(l => ({ productId: l.productId, qty: Number(l.qty) })),
         ...(isAdmin
           ? { issuerBranchId: Number(issuer), recipientBranchId: Number(recipient) }
-          : { recipientBranchId: Number(recipient) }), // STAFF ไม่ต้องส่ง issuer (backend จะตั้งให้เป็นสาขาตัวเอง)
+          : { recipientBranchId: Number(recipient) }),
       };
       const r = await api.post("/api/deliveries", payload);
       nav(`/delivery/${r.data?.id}`);
@@ -131,7 +132,8 @@ export default function BranchDeliveryPage() {
             </div>
           </GradientPanel>
 
-          <GradientPanel title="ค้นหาสินค้า">
+          {/* ✅ เปิด overflow ให้ dropdown เด้งทับขอบกล่องได้ */}
+          <GradientPanel title="ค้นหาสินค้า" innerClassName="!overflow-visible">
             <div className="relative">
               <Input
                 className="input-glass"
@@ -140,7 +142,7 @@ export default function BranchDeliveryPage() {
                 onChange={e=>setQuery(e.target.value)}
               />
               {!!searchResults.length && (
-                <div className="absolute z-10 mt-2 w-full bg-white rounded-xl border shadow">
+                <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl border shadow">
                   {searchResults.map(p => (
                     <button
                       key={p.id}

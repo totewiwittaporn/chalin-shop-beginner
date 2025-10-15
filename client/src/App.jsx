@@ -23,7 +23,6 @@ import PurchasesPage from "@/pages/purchases/PurchasesPage";
 import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 import InventoryPage from "@/pages/inventory/InventoryPage";
 import InventoryCountPage from "@/pages/inventory/InventoryCountPage";
-import TransfersPage from '@/pages/transfers/TransfersPage';
 import UsersPage from "@/pages/users/UsersPage.jsx";
 
 // ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
@@ -33,13 +32,7 @@ import BranchDelivery from "@/pages/delivery/BranchDelivery";
 import ConsignmentDelivery from '@/pages/delivery/ConsignmentDelivery';
 
 // Docs
-import DocsHome from '@/pages/docs/DocsHome';
-import DeliveryDocs from '@/pages/docs/DeliveryDocs';
-import ConsaleDocs from '@/pages/docs/ConsaleDocs';
-import InvoiceDocs from '@/pages/docs/InvoiceDocs';
-import ReceiptDocs from '@/pages/docs/ReceiptDocs';
-import QuoteDocs from '@/pages/docs/QuoteDocs';
-import DocPreview from '@/pages/docs/DocPreview';
+
 
 const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || "/";
 
@@ -76,7 +69,6 @@ export default function App() {
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/inventory/count" element={<InventoryCountPage />} />
-            <Route path="/transfers" element={<TransfersPage />} />
             <Route path="/users" element={<UsersPage />} />
 
             {/* POS — แยกสองฝั่ง (ใช้ Outlet-pattern ครอบสิทธิ์) */}
@@ -96,16 +88,8 @@ export default function App() {
             </Route>
 
             {/* Docs */}
-            <Route path="/docs" element={<DocsHome />}>
-              <Route path="deliveries" element={<DeliveryDocs />} />
-              <Route path="consales" element={<ConsaleDocs />} />
-              <Route path="invoices" element={<InvoiceDocs />} />
-              <Route path="receipts" element={<ReceiptDocs />} />
-              <Route path="quotes" element={<QuoteDocs />} />
             </Route>
-            <Route path="/docs/:kind/:id" element={<DocPreview />} />
           </Route>
-        </Route>
 
         {/* 404 */}
         <Route path="*" element={<div className="p-6">ไม่พบหน้าที่ต้องการ</div>} />
