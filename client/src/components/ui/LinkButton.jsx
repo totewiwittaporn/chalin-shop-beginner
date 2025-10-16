@@ -3,17 +3,19 @@ import { buttonClasses } from "./buttonStyles";
 
 /**
  * LinkButton (ลิงก์หน้าตาเป็นปุ่ม)
- * - kind: "primary" | "white" | "ghost" | "link" | "danger" | "gradient" | "success"
- * - size: "sm" | "md" | "lg"
- * - fullWidth, disabled
- * - ภายใน (to) / ภายนอก (href)
- * - รองรับ `variant` เป็น alias ของ kind ชั่วคราว
+ * kind:
+ *  "primary" | "white" | "ghost" | "link" |
+ *  "success" | "editor" | "warning" | "danger" | "gradient"
+ *
+ * size: "sm" | "md" | "lg"
+ * options: fullWidth, disabled
+ * สามารถใช้ `variant` เป็น alias ของ kind ได้ (เผื่อรหัสเก่า)
  */
 export default function LinkButton({
   to,
   href,
   kind,
-  variant,              // alias ชั่วคราว
+  variant, // alias ชั่วคราว
   size = "md",
   fullWidth = false,
   disabled = false,
@@ -21,7 +23,7 @@ export default function LinkButton({
   children,
   ...rest
 }) {
-  const styleKey = (kind ?? variant ?? "white");
+  const styleKey = kind ?? variant ?? "white";
   const classes = buttonClasses({ type: styleKey, size, fullWidth, disabled, className });
 
   if (disabled) {

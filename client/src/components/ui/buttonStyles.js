@@ -1,8 +1,25 @@
 // client/src/components/ui/buttonStyles.js
 import clsx from "clsx";
 
+/**
+ * Button style tokens (Glass-Blue theme)
+ *
+ * kinds (semantic):
+ *  - primary   : ฟ้า (ค่าเริ่มต้น/การกระทำทั่วไป)
+ *  - white     : ขาว ขอบจาง (secondary)
+ *  - ghost     : โปร่งใส โฮเวอร์เทาอ่อน
+ *  - link      : ลิงก์ข้อความ
+ *  - success   : เขียว (เพิ่ม/สร้าง/Login)
+ *  - editor    : เหลืองส้ม (แก้ไข)
+ *  - warning   : alias ของ editor (แก้ไข)
+ *  - danger    : แดง (ยกเลิก/Logout)
+ *  - gradient  : กราเดียนต์ฟ้า → ม่วง
+ */
+
 const base =
-  "inline-flex items-center gap-2 rounded-xl font-medium transition-shadow focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed";
+  "inline-flex items-center gap-2 rounded-xl font-medium " +
+  "transition-shadow focus:outline-none focus:ring-2 " +
+  "disabled:opacity-60 disabled:cursor-not-allowed";
 
 const sizes = {
   sm: "text-sm px-3 py-1.5",
@@ -18,15 +35,19 @@ const kinds = {
     "bg-white text-slate-900 border border-slate-200 hover:shadow-sm focus:ring-slate-300/50",
   ghost:
     "bg-transparent text-slate-700 hover:bg-slate-100/60 focus:ring-slate-300/40",
-  link: "bg-transparent underline text-[#3b82f6] px-0 py-0 focus:ring-[#3b82f6]/30",
-  danger:
-    "bg-[#ef4444] text-white hover:shadow-md hover:brightness-105 focus:ring-[#ef4444]/40",
+  link:
+    "bg-transparent underline text-[#3b82f6] px-0 py-0 focus:ring-[#3b82f6]/30",
   success:
     "bg-[#10b981] text-white hover:shadow-md hover:brightness-105 focus:ring-[#10b981]/40",
+  danger:
+    "bg-[#ef4444] text-white hover:shadow-md hover:brightness-105 focus:ring-[#ef4444]/40",
   gradient:
     "text-white bg-gradient-to-r from-[#6f86ff] to-[#9db9ff] hover:shadow-md focus:ring-[#6f86ff]/40",
-  // ✅ ใหม่: ปุ่มสำหรับ “แก้ไข” สีเหลือง
+  // สีเหลืองส้ม (แก้ไข)
   editor:
+    "bg-[#f59e0b] text-white hover:shadow-md hover:brightness-105 focus:ring-[#f59e0b]/40",
+  // alias → ใช้สีเดียวกับ editor
+  warning:
     "bg-[#f59e0b] text-white hover:shadow-md hover:brightness-105 focus:ring-[#f59e0b]/40",
 };
 

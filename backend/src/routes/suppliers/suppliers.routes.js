@@ -1,8 +1,9 @@
-import express from "express";
-import * as ctrl from "../../controllers/suppliers/suppliersController.js";
-import { requireAuth } from "../../middleware/auth.js";
+// backend/src/routes/suppliers/suppliers.routes.js
+import { Router } from "express";
+import * as ctrl from "#app/controllers/suppliers/suppliersController.js";
+import { requireAuth } from "#app/middleware/auth.js";
 
-const router = express.Router();
+const router = Router();
 router.use(requireAuth);
 
 router.get("/", ctrl.list);

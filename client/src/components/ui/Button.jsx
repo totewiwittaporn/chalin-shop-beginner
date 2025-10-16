@@ -3,9 +3,13 @@ import { buttonClasses } from "./buttonStyles";
 
 /**
  * Button (มาตรฐานโปรเจกต์)
- * kind: "primary" | "white" | "ghost" | "link" | "danger" | "gradient" | "success" | "editor"
+ *
+ * kind:
+ *  "primary" | "white" | "ghost" | "link" |
+ *  "success" | "editor" | "warning" | "danger" | "gradient"
+ *
  * size: "sm" | "md" | "lg"
- * ออปชัน: loading, disabled, fullWidth, leftIcon, rightIcon
+ * options: loading, disabled, fullWidth, leftIcon, rightIcon
  */
 export default function Button({
   type = "button",

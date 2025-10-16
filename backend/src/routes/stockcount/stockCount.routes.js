@@ -1,10 +1,9 @@
-
 // backend/src/routes/stockcount/stockCountRoutes.js
-import express from "express";
-import * as ctrl from "../../controllers/stockcount/stockCountController.js";
-import { requireAuth } from "../../middleware/auth.js";
+import { Router } from "express";
+import { requireAuth } from "#app/middleware/auth.js";
+import * as ctrl from "#app/controllers/stockcount/stockCountController.js";
 
-const router = express.Router();
+const router = Router();
 router.use(requireAuth);
 
 router.post("/", ctrl.create);

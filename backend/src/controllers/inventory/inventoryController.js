@@ -1,19 +1,26 @@
 // backend/src/controllers/inventory/inventoryController.js
-import pkg from "@prisma/client";
-const { PrismaClient, Prisma } = pkg;
-
-const prisma = new PrismaClient();
-
-// ใช้ค่าจาก enums.prisma ที่คุณให้มา
-const LEDGER_IN_TYPE = "PURCHASE_RECEIVE";
+import prisma from "#app/lib/prisma.js";
 
 /**
- * GET /api/inventory?q=&branchId=
- * สรุปยอดคงเหลือจาก stockLedger (sum qty by productId)
+ * GET /api/inventory
+ * params:
+ *   - q?: string (barcode/name)
+ *   - branchId?: number  -> โหมด "สาขา"
+ *   - consignmentPartnerId?: number -> โหมด "ร้านฝากขาย"
+ *
+ * behavior:
+ *   - ถ้ามี branchId: อ่านจาก Inventory (รวมตาม productId เฉพาะสาขานั้น)
+ *   - ถ้ามี consignmentPartnerId: อ่านจาก ConsignmentInventory (เฉพาะร้านฝากขายนั้น) **ใช้ qtyOnHand**
+ *   - ถ้าไม่ส่งทั้งคู่: รวมทั้งสองฝั่งเข้าด้วยกัน (Inventory + ConsignmentInventory) **map qtyOnHand -> qty**
+ *
+ * response: { items: { productId, barcode, name, costPrice, qty }[] }
  */
 export async function summary(req, res) {
   try {
-    const { q = "", branchId } = req.query;
+    const { q = "", branchId, consignmentPartnerId } = req.query;
+    const hasBranch = !!branchId;
+    const hasPartner = !!consignmentPartnerId;
+
     const whereProduct =
       q?.trim()
         ? {
@@ -24,34 +31,98 @@ export async function summary(req, res) {
           }
         : undefined;
 
-    const whereLedger = {
-      ...(branchId ? { branchId: Number(branchId) } : {}),
-      ...(whereProduct ? { product: whereProduct } : {}),
-    };
+    // Helper: map product for fast lookup
+    async function loadProductsByIds(ids) {
+      if (!ids?.length) return new Map();
+      const rows = await prisma.product.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, barcode: true, name: true, costPrice: true },
+      });
+      return new Map(rows.map(p => [p.id, p]));
+    }
 
-    const groups = await prisma.stockLedger.groupBy({
-      by: ["productId"],
-      where: whereLedger,
-      _sum: { qty: true },
-    });
+    if (hasBranch) {
+      // โหมดสาขา -> Inventory (ฟิลด์ qty)
+      const rows = await prisma.inventory.findMany({
+        where: {
+          branchId: Number(branchId),
+          ...(whereProduct ? { product: whereProduct } : {}),
+        },
+        include: { product: true },
+        orderBy: [{ qty: "desc" }, { product: { name: "asc" } }],
+        take: 1000,
+      });
 
-    const ids = groups.map((g) => g.productId);
-    const products = ids.length
-      ? await prisma.product.findMany({ where: { id: { in: ids } } })
-      : [];
+      const items = rows.map(r => ({
+        productId: r.productId,
+        barcode: r.product?.barcode || "",
+        name: r.product?.name || "",
+        costPrice: Number(r.product?.costPrice || 0),
+        qty: Number(r.qty || 0),
+      }));
 
-    const items = groups
-      .map((g) => {
-        const p = products.find((x) => x.id === g.productId);
-        return {
-          productId: g.productId,
-          barcode: p?.barcode || "",
-          name: p?.name || "",
-          costPrice: Number(p?.costPrice || 0),
-          qty: Number(g._sum.qty || 0),
-        };
-      })
-      .filter((it) => it.qty !== 0);
+      return res.json({ items });
+    }
+
+    if (hasPartner) {
+      // โหมดร้านฝากขาย -> ConsignmentInventory (ฟิลด์ qtyOnHand)
+      const rows = await prisma.consignmentInventory.findMany({
+        where: {
+          consignmentPartnerId: Number(consignmentPartnerId),
+          ...(whereProduct ? { product: whereProduct } : {}),
+        },
+        include: { product: true },
+        orderBy: [{ qtyOnHand: "desc" }, { product: { name: "asc" } }],
+        take: 1000,
+      });
+
+      const items = rows.map(r => ({
+        productId: r.productId,
+        barcode: r.product?.barcode || "",
+        name: r.product?.name || "",
+        costPrice: Number(r.product?.costPrice || 0),
+        qty: Number(r.qtyOnHand || 0), // <<— ใช้ qtyOnHand
+      }));
+
+      return res.json({ items });
+    }
+
+    // โหมดรวมทั้งหมด -> รวม Inventory (qty) + ConsignmentInventory (qtyOnHand)
+    const [invRows, consRows] = await Promise.all([
+      prisma.inventory.findMany({
+        where: { ...(whereProduct ? { product: whereProduct } : {}) },
+        select: { productId: true, qty: true },
+        take: 5000,
+      }),
+      prisma.consignmentInventory.findMany({
+        where: { ...(whereProduct ? { product: whereProduct } : {}) },
+        select: { productId: true, qtyOnHand: true }, // <<— ใช้ qtyOnHand
+        take: 5000,
+      }),
+    ]);
+
+    // รวม qty ตาม productId
+    const qtyMap = new Map();
+    for (const r of invRows) {
+      qtyMap.set(r.productId, (qtyMap.get(r.productId) || 0) + Number(r.qty || 0));
+    }
+    for (const r of consRows) {
+      qtyMap.set(r.productId, (qtyMap.get(r.productId) || 0) + Number(r.qtyOnHand || 0)); // <<— ใช้ qtyOnHand
+    }
+
+    const ids = Array.from(qtyMap.keys());
+    const pmap = await loadProductsByIds(ids);
+    const items = ids.map(id => {
+      const p = pmap.get(id) || {};
+      const qty = qtyMap.get(id) || 0;
+      return {
+        productId: id,
+        barcode: p.barcode || "",
+        name: p.name || "",
+        costPrice: Number(p.costPrice || 0),
+        qty: Number(qty),
+      };
+    }).filter(it => it.qty !== 0);
 
     res.json({ items });
   } catch (e) {
@@ -62,7 +133,7 @@ export async function summary(req, res) {
 
 /**
  * GET /api/inventory/ledger?productId=&branchId=
- * คืน movement ล่าสุดสำหรับตรวจสอบ
+ * ล่าสุด/ตรวจสอบความเคลื่อนไหว
  */
 export async function ledger(req, res) {
   try {
@@ -86,8 +157,8 @@ export async function ledger(req, res) {
 }
 
 /**
- * POST /api/inventory/rebuild[?branchId=]
- * เติม movement ย้อนหลังจากใบซื้อที่ "RECEIVED"
+ * POST /api/inventory/rebuild?branchId=
+ * เติม movement จากใบซื้อที่ RECEIVED (เหมือนของเดิม)
  */
 export async function rebuild(req, res) {
   try {
@@ -95,10 +166,8 @@ export async function rebuild(req, res) {
     const branchFilter = branchId ? { branchId: Number(branchId) } : {};
 
     await prisma.$transaction(async (tx) => {
-      // ล้าง ledger เฉพาะ scope ที่กำหนด (หรือทั้งหมดถ้าไม่ส่ง branchId)
       await tx.stockLedger.deleteMany(branchFilter);
 
-      // ดึงใบซื้อที่รับเข้าแล้ว
       const purchases = await tx.purchase.findMany({
         where: { status: "RECEIVED", ...(branchFilter.branchId ? { branchId: branchFilter.branchId } : {}) },
         include: { lines: true },
@@ -112,11 +181,11 @@ export async function rebuild(req, res) {
             rows.push({
               productId: l.productId,
               branchId: p.branchId,
-              qty,                                      // เข้า
-              type: LEDGER_IN_TYPE,                     // ✅ PURCHASE_RECEIVE
+              qty,
+              type: "PURCHASE_RECEIVE",
               refTable: "Purchase",
               refId: p.id,
-              unitCost: new Prisma.Decimal(l.costPrice || 0),
+              unitCost: l.costPrice ?? 0,
             });
           }
         }
@@ -130,19 +199,9 @@ export async function rebuild(req, res) {
       }
     });
 
-    res.json({
-      ok: true,
-      scope: branchId ? { branchId: Number(branchId) } : "all-branches",
-      message: "Rebuilt ledger from RECEIVED purchases",
-      usedType: LEDGER_IN_TYPE,
-    });
+    res.json({ ok: true });
   } catch (e) {
     console.error("[REBUILD ERR]", e);
-    res.status(500).json({
-      message: "rebuild failed",
-      name: e?.name,
-      code: e?.code,
-      meta: e?.meta,
-    });
+    res.status(500).json({ message: "rebuild failed" });
   }
 }

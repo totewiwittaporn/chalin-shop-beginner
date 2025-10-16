@@ -1,5 +1,4 @@
 // backend/src/routes/index.js
-// รวม router ทั้งหมด และแยกเป็น public/protected ให้ mount จาก entry
 
 // PUBLIC
 import authRoutes from "#app/routes/auth/auth.routes.js";
@@ -7,23 +6,23 @@ import authMeRoutes from "#app/routes/auth/auth.me.routes.js";
 
 // PROTECTED
 import productsRoutes from "#app/routes/products/products.routes.js";
-import productTypesRoutes from "#app/routes/products/productTypes.routes.js";
+import productTypesRoutes from "#app/routes/products/productTypes.routes.js"; // ✅ แก้ให้ชี้โฟลเดอร์ products
 import branchesRoutes from "#app/routes/branches/branches.routes.js";
 import usersRoutes from "#app/routes/users/users.routes.js";
 import salesRoutes from "#app/routes/sales/sales.routes.js";
 
 // Consignment
-import consignmentPartnersRoutes from "#app/routes/consignment/consignment.partners.routes.js";
-import consignmentCategoriesRoutes from "#app/routes/consignment/categories.routes.js";
+import consignmentPartnersRouter from "#app/routes/consignment/consignment.partners.routes.js";
+import consignmentCategoriesRouter from "#app/routes/consignment/consignment.categories.routes.js";
+import consignmentCategoryProductsRouter from "#app/routes/consignment/consignment.categoryProducts.routes.js";
 
 // Others
-import suppliersRoutes from "#app/routes/suppliers/suppliers.routes.js";
-import purchasesRoutes from "#app/routes/purchases/purchases.routes.js";
+import purchasesRouter from "#app/routes/purchases/purchases.routes.js";
+import suppliersRouter from "#app/routes/suppliers/suppliers.routes.js";
 import ordersRoutes from "#app/routes/orders/orders.routes.js";
 import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
 import transfersRoutes from "#app/routes/transfers/transfers.routes.js";
-import bankAccountsRoutes from '#app/routes/bank/bank-accounts.routes.js';
-import consignmentMeRoutes from "#app/routes/consignment/consignment.me.routes.js";
+import bankAccountsRoutes from "#app/routes/bank/bank-accounts.routes.js";
 import deliveriesRoutes from "#app/routes/deliveries/deliveries.routes.js";
 
 export function mountPublicRoutes(app) {
@@ -32,25 +31,24 @@ export function mountPublicRoutes(app) {
 }
 
 export function mountProtectedRoutes(app) {
-  // Core
-  app.use("/api/product-types", productTypesRoutes);
   app.use("/api/products", productsRoutes);
+  app.use("/api/product-types", productTypesRoutes); // ✅ ใช้งานได้แล้ว
+
   app.use("/api/users", usersRoutes);
   app.use("/api/branches", branchesRoutes);
   app.use("/api/sales", salesRoutes);
 
   // Consignment
-  app.use("/api/consignment/partners", consignmentPartnersRoutes);
-  app.use("/api/consignment/categories", consignmentCategoriesRoutes);
-  app.use("/api/consignment/me", consignmentMeRoutes); // ✅ เพิ่มบรรทัดนี้
+  app.use("/api/consignment/partners", consignmentPartnersRouter);
+  app.use("/api/consignment/partners", consignmentCategoriesRouter);
+  app.use("/api/consignment/categories", consignmentCategoryProductsRouter);
 
   // Others
-  app.use("/api/suppliers", suppliersRoutes);
-  app.use("/api/purchases", purchasesRoutes);
+  app.use("/api/purchases", purchasesRouter);
+  app.use("/api/suppliers", suppliersRouter);
   app.use("/api/orders", ordersRoutes);
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api/transfers", transfersRoutes);
-  app.use('/api', bankAccountsRoutes);
-  app.use("/api/deliveries", deliveriesRoutes); // ✅ เพิ่ม
-
+  app.use("/api", bankAccountsRoutes);
+  app.use("/api/deliveries", deliveriesRoutes);
 }

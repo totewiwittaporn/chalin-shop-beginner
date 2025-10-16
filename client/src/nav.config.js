@@ -9,16 +9,13 @@ export const MOBILE_GROUPS = (role = 'admin') => {
       label: 'Branches',
       items: [
         { to: '/branches', label: 'Branches' },
-        { to: '/branches/sales', label: 'Branch Sales' },
       ],
     },
     {
       id: 'consignment',
       label: 'Consignment',
       items: [
-        { to: '/consignment/shops', label: 'Shops' },
-        { to: '/consignment/categories', label: 'Categories' },
-        { to: '/consignment/categories/mapping', label: 'Category Mapping' },
+        { to: '/consignment', label: 'Shops' },
       ],
     },
     {
@@ -27,7 +24,6 @@ export const MOBILE_GROUPS = (role = 'admin') => {
       items: [
         { to: '/products', label: 'Products' },
         { to: '/inventory', label: 'Warehouses' },
-        { to: '/inventory/count', label: 'Cycle Count' },
       ],
     },
     {
@@ -91,7 +87,6 @@ export const MOBILE_GROUPS = (role = 'admin') => {
         label: 'Inventory',
         items: [
           { to: '/inventory', label: 'Warehouses' },
-          { to: '/inventory/count', label: 'Cycle Count' },
         ],
       },
       {
@@ -125,9 +120,7 @@ export const MOBILE_GROUPS = (role = 'admin') => {
         id: 'consignment',
         label: 'Consignment',
         items: [
-          { to: '/consignment/shops', label: 'Shops' },
-          { to: '/consignment/categories', label: 'Categories' },
-          { to: '/consignment/categories/mapping', label: 'Category Mapping' },
+          { to: '/consignment', label: 'Shops' },
         ],
       },
       {

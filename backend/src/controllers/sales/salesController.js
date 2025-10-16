@@ -14,7 +14,6 @@ export async function createSale(req, res) {
       return res.status(400).json({ message: "items is required" });
     }
 
-    // ดึงราคาจาก product ถ้า client ไม่ส่งมา
     const productIds = items.map((i) => i.productId);
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
@@ -27,12 +26,7 @@ export async function createSale(req, res) {
       if (qty <= 0) throw new Error("qty must > 0");
       const unitPrice = i.unitPrice != null ? Number(i.unitPrice) : (priceMap.get(i.productId) ?? 0);
       const lineTotal = qty * unitPrice;
-      return {
-        productId: i.productId,
-        qty,
-        unitPrice,
-        lineTotal,
-      };
+      return { productId: i.productId, qty, unitPrice, lineTotal };
     });
 
     const subtotal = sum(normalized, (x) => x.lineTotal);
@@ -46,9 +40,7 @@ export async function createSale(req, res) {
         subtotal,
         discount,
         total,
-        items: {
-          create: normalized,
-        },
+        items: { create: normalized },
       },
       include: { items: true },
     });
@@ -63,6 +55,10 @@ export async function createSale(req, res) {
 export async function paySale(req, res) {
   const id = Number(req.params.id);
   try {
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "sale id is required" });
+    }
+
     const { payments = [] } = req.body || {};
     if (!Array.isArray(payments) || payments.length === 0) {
       return res.status(400).json({ message: "payments is required" });
@@ -80,7 +76,6 @@ export async function paySale(req, res) {
       return res.status(400).json({ message: "Insufficient payment" });
     }
 
-    // เตรียมรายการ StockLedger (SALE = ตัดออก)
     const ledgerRows = sale.items.map((it) => ({
       productId: it.productId,
       branchId: sale.branchId,
@@ -92,22 +87,33 @@ export async function paySale(req, res) {
     }));
 
     const result = await prisma.$transaction(async (tx) => {
-      // บันทึกการชำระ
+      // 1) ชำระเงิน
       await tx.payment.createMany({
         data: payments.map((p) => ({
           saleId: sale.id,
-          method: String(p.method || "").toUpperCase(), // CASH|TRANSFER|CARD
+          method: String(p.method || "").toUpperCase(),
           amount: Number(p.amount || 0),
           evidenceUrl: p.evidenceUrl || null,
         })),
       });
 
-      // ลงสมุดสต็อก
-      if (ledgerRows.length > 0) {
+      // 2) ลด Inventory และลงสมุดสต็อก
+      for (const it of sale.items) {
+        const qty = Math.abs(Number(it.qty || 0));
+        if (!qty) continue;
+
+        // 2.1 inventory (-qty)
+        await tx.inventory.upsert({
+          where: { branchId_productId: { branchId: sale.branchId, productId: it.productId } },
+          create: { branchId: sale.branchId, productId: it.productId, qty: -qty, reserved: 0 },
+          update: { qty: { decrement: qty } },
+        });
+      }
+      if (ledgerRows.length) {
         await tx.stockLedger.createMany({ data: ledgerRows });
       }
 
-      // ปิดบิล
+      // 3) ปิดบิล
       return tx.sale.update({
         where: { id: sale.id },
         data: { status: "PAID" },
@@ -115,7 +121,6 @@ export async function paySale(req, res) {
       });
     });
 
-    // เงินทอน (เฉพาะที่มี CASH)
     const cashPaid = sum(payments.filter(p => String(p.method).toUpperCase() === "CASH"), x => x.amount);
     const change = Math.max(0, cashPaid - Number(sale.total));
 
@@ -128,6 +133,10 @@ export async function paySale(req, res) {
 
 export async function getSale(req, res) {
   const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "sale id is required" });
+  }
+
   try {
     const sale = await prisma.sale.findUnique({
       where: { id },

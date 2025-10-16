@@ -1,2 +1,2 @@
 // client/src/lib/api.js
-export { default } from "./axios";
+export { default } from "@/lib/axios";

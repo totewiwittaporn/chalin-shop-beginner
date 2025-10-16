@@ -1,99 +1,71 @@
+// client/src/components/BarcodeScannerModal.jsx
 import { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 
 export default function BarcodeScannerModal({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
-  const codeReaderRef = useRef(null);
-  const [devices, setDevices] = useState([]);
-  const [deviceId, setDeviceId] = useState("");
+  const [stream, setStream] = useState(null);
+  const [manual, setManual] = useState("");
 
   useEffect(() => {
-    if (!open) return;
-    const reader = new BrowserMultiFormatReader();
-    codeReaderRef.current = reader;
-
-    (async () => {
+    let active = true;
+    async function start() {
+      if (!open) return;
       try {
-        const inputs = await BrowserMultiFormatReader.listVideoInputDevices();
-        setDevices(inputs);
-        const backCam =
-          inputs.find((d) => /back|rear|environment/i.test(d.label))?.deviceId ||
-          inputs[0]?.deviceId;
-        setDeviceId(backCam || "");
-        if (backCam) {
-          await start(backCam);
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        if (!active) return;
+        setStream(s);
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          await videoRef.current.play();
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
+        // ถ้าไม่อนุญาตกล้องก็ใช้โหมด manual ได้
       }
-    })();
-
-    async function start(id) {
-      await codeReaderRef.current.decodeFromVideoDevice(id, videoRef.current, (res) => {
-        if (res) {
-          const text = res.getText();
-          onDetected?.(text);
-          onClose?.();
-        }
-      });
     }
-
+    start();
     return () => {
-      try {
-        codeReaderRef.current?.reset();
-      } catch {}
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !deviceId || !codeReaderRef.current) return;
-    codeReaderRef.current.reset();
-    codeReaderRef.current.decodeFromVideoDevice(deviceId, videoRef.current, (res) => {
-      if (res) {
-        const text = res.getText();
-        onDetected?.(text);
-        onClose?.();
+      active = false;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
       }
-    });
-  }, [deviceId, open]);
+      setStream(null);
+    };
+  }, [open]); // eslint-disable-line
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
-      <div className="w-[92vw] max-w-md rounded-2xl bg-white/90 p-4 shadow-xl backdrop-blur">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">สแกนบาร์โค้ด</h3>
-          <button onClick={onClose} className="rounded-lg px-2 py-1 hover:bg-slate-100">
-            ปิด
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-xl p-4 bg-white rounded-2xl">
+        <div className="text-lg font-semibold mb-3">สแกนบาร์โค้ด / กรอกด้วยมือ</div>
 
-        <div className="mb-2">
-          <select
-            className="w-full rounded-lg border px-3 py-2"
-            value={deviceId}
-            onChange={(e) => setDeviceId(e.target.value)}
-          >
-            {devices.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {d.label || "Camera"}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="grid gap-3">
+          <div className="aspect-video bg-black/80 rounded-xl overflow-hidden flex items-center justify-center">
+            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+          </div>
 
-        <div className="relative overflow-hidden rounded-xl ring-1 ring-slate-200">
-          <video ref={videoRef} className="h-64 w-full object-cover" playsInline muted autoPlay />
-          <div className="pointer-events-none absolute inset-0 grid place-items-center">
-            <div className="h-28 w-64 rounded-2xl border-2 border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.6)]"></div>
+          <div className="flex items-center gap-2">
+            <input
+              className="flex-1 rounded-xl border px-3 py-2 outline-none"
+              placeholder="พิมพ์/วางรหัสบาร์โค้ด"
+              value={manual}
+              onChange={(e)=> setManual(e.target.value)}
+              onKeyDown={(e)=> e.key === "Enter" && manual && onDetected?.(manual)}
+            />
+            <Button kind="success" onClick={()=> manual && onDetected?.(manual)}>ตกลง</Button>
+            <Button kind="danger" onClick={onClose}>ยกเลิก</Button>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            * หากไม่อนุญาตกล้อง สามารถกรอกบาร์โค้ดด้วยมือแล้วกด “ตกลง”
           </div>
         </div>
-
-        <p className="mt-2 text-xs text-slate-500">
-          ต้องอนุญาตสิทธิ์กล้อง และใช้งานผ่าน HTTPS หรือ localhost
-        </p>
-      </div>
+      </Card>
     </div>
   );
 }

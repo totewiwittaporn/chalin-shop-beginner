@@ -15,14 +15,10 @@ import QuoteViewerWelcome from '@/pages/viewer/QuoteViewerWelcome';
 
 import ProductsPage from '@/pages/products/ProductsPage';
 import BranchesPage from '@/pages/branches/BranchesPage';
-import BranchSalesPage from '@/pages/branches/BranchSalesPage';
-import ConsignmentShopsPage from '@/pages/consignment/ConsignmentShopsPage';
-import ConsignmentCategoriesPage from "@/pages/consignment/ConsignmentCategoriesPage";
-import ConsignmentCategoryMappingPage from "@/pages/consignment/ConsignmentCategoryMappingPage";
+import ConsignmentManagerPage from "@/pages/consignment/ConsignmentManagerPage";
 import PurchasesPage from "@/pages/purchases/PurchasesPage";
 import SuppliersPage from "@/pages/suppliers/SuppliersPage";
 import InventoryPage from "@/pages/inventory/InventoryPage";
-import InventoryCountPage from "@/pages/inventory/InventoryCountPage";
 import UsersPage from "@/pages/users/UsersPage.jsx";
 
 // ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
@@ -58,17 +54,12 @@ export default function App() {
             <Route path="/viewer/welcome" element={<QuoteViewerWelcome />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/branches" element={<BranchesPage />} />
-            <Route path="/branches/sales" element={<BranchSalesPage />} />
-            {/* เก็บ route เก่าไว้ช่วงเปลี่ยนผ่าน แต่พอย้ายเมนูแล้วจะใช้ตัวใหม่แทน */}
-            <Route path="/branches/delivery" element={<BranchDelivery />} />
 
-            <Route path="/consignment/shops" element={<ConsignmentShopsPage />} />
-            <Route path="/consignment/categories/mapping" element={<ConsignmentCategoryMappingPage />} />
-            <Route path="/consignment/categories" element={<ConsignmentCategoriesPage />} />
+
+            <Route path="/consignment" element={<ConsignmentManagerPage />} />
             <Route path="/purchases" element={<PurchasesPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/inventory/count" element={<InventoryCountPage />} />
             <Route path="/users" element={<UsersPage />} />
 
             {/* POS — แยกสองฝั่ง (ใช้ Outlet-pattern ครอบสิทธิ์) */}
