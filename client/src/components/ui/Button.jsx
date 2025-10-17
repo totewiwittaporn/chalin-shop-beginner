@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { buttonClasses } from "./buttonStyles";
+import { buttonClasses } from "@/components/ui/buttonStyles";
 
 /**
  * Button (มาตรฐานโปรเจกต์)

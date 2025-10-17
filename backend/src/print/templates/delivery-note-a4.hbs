@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, width=device-width" />
+  <!-- ฟอนต์ไทยที่อ่านง่าย -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @page { size: A4; margin: 0; }
+    html, body { width: 210mm; height: 297mm; margin:0; padding:0; background:#fff; }
+    body { font-family: "Noto Sans Thai", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#0f172a; }
+    .page { box-sizing:border-box; width:210mm; height:297mm; padding:10mm; }
+    h1 { font-size:20px; margin:0 0 8px; font-weight:700; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; }
+    .box { border:1px solid #e2e8f0; border-radius:10px; padding:8px 10px; }
+    .muted { color:#64748b; font-size:12px; }
+    .grid2 { display:grid; grid-template-columns: 120px 1fr; column-gap:12px; row-gap:4px; font-size:12px; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
+    thead th { background:#f8fafc; color:#475569; font-weight:600; text-align:left; padding:8px; }
+    th:nth-child(2), th:nth-child(3), th:nth-child(4),
+    td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align:right; }
+    tbody td { border-bottom:1px solid #e2e8f0; padding:6px 8px; }
+    tfoot td { padding:8px; }
+    .sumlabel { font-weight:600; vertical-align:top; }
+    .sumtext { font-size:11px; color:#64748b; margin-top:2px; }
+    .note { margin-top:12px; }
+    .note .area { height:70px; border:1px solid #e2e8f0; border-radius:10px; }
+    .sign { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:18px; }
+    .sign .line { height:40px; }
+    .sign .caption { text-align:center; border-top:1px solid #cbd5e1; padding-top:6px; font-size:12px; }
+    .right { text-align:right; }
+    .logo { width:90px; height:36px; background:#f1f5f9; color:#94a3b8; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:11px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="row" style="align-items:flex-start; justify-content:space-between;">
+      <h1>ใบส่งสินค้า (Delivery Note)</h1>
+      <div class="logo">LOGO</div>
+    </div>
+
+    <div class="grid2" style="margin-top:4px;">
+      <div class="muted">วันที่ (Date)</div> <div>{{date}}</div>
+      <div class="muted">เลขที่เอกสาร (No.)</div> <div>{{docNo}}</div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="col">
+        <div class="muted" style="margin:2px 0 6px;">ส่งถึง (Delivery To)</div>
+        <div class="box">
+          <div style="font-weight:600">{{to.name}}</div>
+          <div class="muted">{{to.addr1}}</div>
+          {{#if to.addr2}}<div class="muted">{{to.addr2}}</div>{{/if}}
+          {{#if to.addr3}}<div class="muted">{{to.addr3}}</div>{{/if}}
+          {{#if to.phone}}<div class="muted">โทร: {{to.phone}}</div>{{/if}}
+          {{#if to.extra}}<div class="muted">อื่นๆ: {{to.extra}}</div>{{/if}}
+        </div>
+      </div>
+      <div class="col">
+        <div class="muted" style="margin:2px 0 6px;">ส่งจาก (Delivery From)</div>
+        <div class="box">
+          <div style="font-weight:600">{{from.name}}</div>
+          <div class="muted">{{from.addr1}}</div>
+          {{#if from.addr2}}<div class="muted">{{from.addr2}}</div>{{/if}}
+          {{#if from.addr3}}<div class="muted">{{from.addr3}}</div>{{/if}}
+          {{#if from.phone}}<div class="muted">โทร: {{from.phone}}</div>{{/if}}
+          {{#if from.extra}}<div class="muted">อื่นๆ: {{from.extra}}</div>{{/if}}
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Price</th>
+          <th>QTY</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each rows}}
+        <tr>
+          <td>{{description}}</td>
+          <td>{{price}}</td>
+          <td>{{qty}}</td>
+          <td>{{lineTotal}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="sumlabel">
+            รวมทั้งสิ้น (Total)
+            <div class="sumtext">({{totalText}})</div>
+          </td>
+          <td class="right"><strong>{{total}}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="note">
+      <div class="muted" style="margin:0 0 6px;">หมายเหตุ</div>
+      <div class="area"></div>
+    </div>
+
+    <div class="sign">
+      <div>
+        <div class="line"></div>
+        <div class="caption">ลงชื่อผู้ส่งสินค้า / Sender</div>
+        <div class="caption muted">วันที่/เวลา _____________</div>
+      </div>
+      <div>
+        <div class="line"></div>
+        <div class="caption">ลงชื่อผู้รับสินค้า / Receiver</div>
+        <div class="caption muted">วันที่/เวลา _____________</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

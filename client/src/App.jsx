@@ -15,22 +15,23 @@ import QuoteViewerWelcome from '@/pages/viewer/QuoteViewerWelcome';
 
 import ProductsPage from '@/pages/products/ProductsPage';
 import BranchesPage from '@/pages/branches/BranchesPage';
-import ConsignmentManagerPage from "@/pages/consignment/ConsignmentManagerPage";
-import PurchasesPage from "@/pages/purchases/PurchasesPage";
-import SuppliersPage from "@/pages/suppliers/SuppliersPage";
-import InventoryPage from "@/pages/inventory/InventoryPage";
-import UsersPage from "@/pages/users/UsersPage.jsx";
+import ConsignmentManagerPage from '@/pages/consignment/ConsignmentManagerPage';
+import PurchasesPage from '@/pages/purchases/PurchasesPage';
+import SuppliersPage from '@/pages/suppliers/SuppliersPage';
+import InventoryPage from '@/pages/inventory/InventoryPage';
+import UsersPage from '@/pages/users/UsersPage.jsx';
 
 // ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
 import BranchPOS from '@/pages/pos/BranchPOS';
 import ConsignmentPOS from '@/pages/pos/ConsignmentPOS';
-import BranchDelivery from "@/pages/delivery/BranchDelivery";
+import BranchDelivery from '@/pages/delivery/BranchDelivery';
 import ConsignmentDelivery from '@/pages/delivery/ConsignmentDelivery';
 
 // Docs
 
+import DeliveryNoteA4Page from '@/pages/delivery/DeliveryNoteA4Page.jsx'; // ⬅️ เพิ่มบรรทัดนี้
 
-const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || "/";
+const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || '/';
 
 export default function App() {
   return (
@@ -55,7 +56,6 @@ export default function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/branches" element={<BranchesPage />} />
 
-
             <Route path="/consignment" element={<ConsignmentManagerPage />} />
             <Route path="/purchases" element={<PurchasesPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
@@ -63,24 +63,25 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
 
             {/* POS — แยกสองฝั่ง (ใช้ Outlet-pattern ครอบสิทธิ์) */}
-            <Route element={<RequireAuth roles={['ADMIN','STAFF']} />}>
+            <Route element={<RequireAuth roles={['ADMIN', 'STAFF']} />}>
               <Route path="/pos/branch" element={<BranchPOS />} />
             </Route>
-            <Route element={<RequireAuth roles={['ADMIN','CONSIGNMENT']} />}>
+            <Route element={<RequireAuth roles={['ADMIN', 'CONSIGNMENT']} />}>
               <Route path="/pos/consignment" element={<ConsignmentPOS />} />
             </Route>
 
             {/* Delivery — แยกสองฝั่ง */}
-            <Route element={<RequireAuth roles={['ADMIN','STAFF']} />}>
+            <Route element={<RequireAuth roles={['ADMIN', 'STAFF']} />}>
               <Route path="/delivery/branch" element={<BranchDelivery />} />
             </Route>
-            <Route element={<RequireAuth roles={['ADMIN','CONSIGNMENT']} />}>
+            <Route element={<RequireAuth roles={['ADMIN', 'CONSIGNMENT']} />}>
               <Route path="/delivery/consignment" element={<ConsignmentDelivery />} />
             </Route>
 
             {/* Docs */}
-            </Route>
           </Route>
+          <Route path="/delivery/:id/print" element={<DeliveryNoteA4Page />} />
+        </Route>
 
         {/* 404 */}
         <Route path="*" element={<div className="p-6">ไม่พบหน้าที่ต้องการ</div>} />

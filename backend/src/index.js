@@ -8,6 +8,7 @@ import "dotenv/config";
 import { requireAuth } from "#app/middleware/auth.js";
 import { errorHandler } from "#app/middleware/error.js";
 import { mountPublicRoutes, mountProtectedRoutes } from "#app/routes/index.js";
+import printRoutes from "#app/routes/print.routes.js";
 
 const app = express();
 
@@ -32,6 +33,9 @@ mountPublicRoutes(app);
 // Protected routes (ต้องล็อกอิน)
 app.use(requireAuth);
 mountProtectedRoutes(app);
+
+// Print PDF
+app.use("/api/print", printRoutes);
 
 // 404 fallback
 app.use((_req, res) => res.status(404).json({ message: "Not Found" }));

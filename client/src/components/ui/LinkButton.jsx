@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { buttonClasses } from "./buttonStyles";
+import { buttonClasses } from "@/components/ui/buttonStyles";
 
 /**
  * LinkButton (ลิงก์หน้าตาเป็นปุ่ม)
