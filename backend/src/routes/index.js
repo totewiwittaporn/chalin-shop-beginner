@@ -9,7 +9,7 @@ import productsRoutes from "#app/routes/products/products.routes.js";
 import productTypesRoutes from "#app/routes/products/productTypes.routes.js"; // ✅ แก้ให้ชี้โฟลเดอร์ products
 import branchesRoutes from "#app/routes/branches/branches.routes.js";
 import usersRoutes from "#app/routes/users/users.routes.js";
-import salesRoutes from "#app/routes/sales/sales.routes.js";
+import salesBranchRoutes from "#app/routes/sales/branch/sales.routes.js";
 
 // Consignment
 import consignmentPartnersRouter from "#app/routes/consignment/consignment.partners.routes.js";
@@ -36,7 +36,7 @@ export function mountProtectedRoutes(app) {
 
   app.use("/api/users", usersRoutes);
   app.use("/api/branches", branchesRoutes);
-  app.use("/api/sales", salesRoutes);
+  app.use("/api/sales/branch", salesBranchRoutes);
 
   // Consignment
   app.use("/api/consignment/partners", consignmentPartnersRouter);

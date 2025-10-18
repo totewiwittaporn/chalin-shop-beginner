@@ -177,115 +177,140 @@ export default function BranchDeliveryPage() {
 
   // ดู (HTML)
   // ดู (HTML) — ถ้าป๊อปอัพเปิดได้จะเปิดแท็บใหม่, ถ้าถูกบล็อกจะเปิดในแท็บปัจจุบันแทน
-  const viewBill = async (docId) => {
-    // พยายามเปิดแท็บใหม่ก่อน
-    window.open(`/delivery/${docId}/print`, '_blank', 'noopener,noreferrer');
+  /* ------------------------- ดู / พิมพ์ใบส่งสินค้า ------------------------- */
 
-    try {
-      const res = await api.get(`/api/print/delivery/${docId}`, {
-        params: { size: 'a4' },
-        responseType: 'text',
-        transformResponse: [(d) => d],
-        validateStatus: (s) => s >= 200 && s < 600,
-      });
-      const html = String(res.data || '');
-      const isLikelyJson = html.trim().startsWith('{') && html.trim().endsWith('}');
-      const content = isLikelyJson
-        ? `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${html}</pre>`
-        : html;
+// ดู (HTML)
+const viewBill = async (docId) => {
+  // พยายามเปิดป๊อปอัปก่อน
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (popup) {
+    // แสดงหน้ารอ เพื่อไม่ให้ผู้ใช้เห็นหน้าว่าง
+    popup.document.open();
+    popup.document.write(
+      `<html><head><meta charset="utf-8"/></head>
+       <body style="font-family: ui-sans-serif, system-ui; padding:16px">
+         <div>กำลังโหลดใบส่งสินค้า...</div>
+       </body></html>`
+    );
+    popup.document.close();
+  }
 
-      if (popup) {
-        // ✅ เปิดแท็บใหม่สำเร็จ → เขียนเนื้อหาใส่แท็บนั้น
-        popup.document.open();
-        popup.document.write(content);
-        popup.document.close();
-      } else {
-        // ❌ ป๊อปอัพถูกบล็อก → เปิดในแท็บปัจจุบันแทน
-        const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        window.location.assign(url);
-      }
-    } catch (err) {
-      if (popup) {
-        popup.document.open();
-        popup.document.write(
-          `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">โหลดใบส่งสินค้าไม่สำเร็จ\n\n${String(err)}</pre>`
-        );
-        popup.document.close();
-      } else {
-        // same-tab fallback
-        const msg = `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">โหลดใบส่งสินค้าไม่สำเร็จ\n\n${String(err)}</pre>`;
-        const blob = new Blob([msg], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        window.location.assign(url);
-      }
+  try {
+    const res = await api.get(`/api/print/delivery/${docId}`, {
+      params: { size: "a4" },
+      responseType: "text",
+      transformResponse: [(d) => d],
+      validateStatus: (s) => s >= 200 && s < 600,
+    });
+
+    const html = String(res.data || "");
+    const isLikelyJson = html.trim().startsWith("{") && html.trim().endsWith("}");
+    const content = isLikelyJson
+      ? `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${html}</pre>`
+      : html;
+
+    if (popup) {
+      popup.document.open();
+      popup.document.write(content);
+      popup.document.close();
+    } else {
+      // ป๊อปอัปถูกบล็อก → เปิดในแท็บปัจจุบันแทน
+      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      window.location.assign(url);
     }
-  };
+  } catch (err) {
+    const msg = `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">โหลดใบส่งสินค้าไม่สำเร็จ\n\n${String(
+      err
+    )}</pre>`;
+    if (popup) {
+      popup.document.open();
+      popup.document.write(msg);
+      popup.document.close();
+    } else {
+      const blob = new Blob([msg], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      window.location.assign(url);
+    }
+  }
+};
 
-  // พิมพ์ (PDF) — ถ้าป๊อปอัพถูกบล็อก ให้เปิด/ดาวน์โหลดในแท็บปัจจุบัน
-  const printBillPDF = async (docId) => {
-    window.open(`/delivery/${docId}/print?auto=1`, '_blank', 'noopener,noreferrer');
+// พิมพ์ (PDF)
+const printBillPDF = async (docId) => {
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (popup) {
+    popup.document.open();
+    popup.document.write(
+      `<html><head><meta charset="utf-8"/></head>
+       <body style="font-family: ui-sans-serif, system-ui; padding:16px">
+         <div>กำลังเตรียมไฟล์ PDF...</div>
+       </body></html>`
+    );
+    popup.document.close();
+  }
 
-    try {
-      const res = await api.get(`/api/print/delivery/${docId}`, {
-        params: { size: 'a4', format: 'pdf' },
-        responseType: 'arraybuffer',
-        validateStatus: (s) => s >= 200 && s < 600,
-      });
+  try {
+    const res = await api.get(`/api/print/delivery/${docId}`, {
+      params: { size: "a4", format: "pdf" },
+      responseType: "arraybuffer",
+      validateStatus: (s) => s >= 200 && s < 600,
+    });
 
-      const ctype = String(res.headers?.['content-type'] || '').toLowerCase();
+    const ctype = String(res.headers?.["content-type"] || "").toLowerCase();
 
-      if (ctype.includes('application/pdf')) {
-        // ✅ ได้ PDF จริง
-        const pdfBlob = new Blob([res.data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(pdfBlob);
+    if (ctype.includes("application/pdf")) {
+      // ✅ ได้ PDF จริง
+      const pdfBlob = new Blob([res.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(pdfBlob);
 
-        if (popup) {
-          // แสดงในแท็บใหม่ด้วย iframe เพื่อความเสถียร
-          popup.document.open();
-          popup.document.write(`
+      if (popup) {
+        // แสดง PDF ด้วย iframe ในหน้าต่างใหม่
+        popup.document.open();
+        popup.document.write(`
           <html><head><meta charset="utf-8"/></head>
           <body style="margin:0">
             <iframe src="${url}" style="border:0;width:100vw;height:100vh"></iframe>
           </body></html>
         `);
-          popup.document.close();
-        } else {
-          // ❌ ป๊อปอัพถูกบล็อก → เปิดในแท็บปัจจุบัน
-          window.location.assign(url);
-        }
-        return;
-      }
-
-      // ❌ ไม่ใช่ PDF → แสดงข้อความ/HTML error
-      const text = new TextDecoder('utf-8').decode(new Uint8Array(res.data || []));
-      const isHtml = /<\/?(html|body|head)/i.test(text);
-      const content = isHtml
-        ? text
-        : `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${text}</pre>`;
-
-      if (popup) {
-        popup.document.open();
-        popup.document.write(content);
         popup.document.close();
       } else {
-        const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
+        // ป๊อปอัปถูกบล็อก → เปิดในแท็บปัจจุบัน
         window.location.assign(url);
       }
-    } catch (err) {
-      const content = `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">พิมพ์ใบส่งสินค้าไม่สำเร็จ\n\n${String(err)}</pre>`;
-      if (popup) {
-        popup.document.open();
-        popup.document.write(content);
-        popup.document.close();
-      } else {
-        const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        window.location.assign(url);
-      }
+      return;
     }
-  };
+
+    // ❌ ไม่ใช่ PDF → แสดงข้อความ/HTML error
+    const text = new TextDecoder("utf-8").decode(new Uint8Array(res.data || []));
+    const isHtml = /<\/?(html|body|head)/i.test(text);
+    const content = isHtml
+      ? text
+      : `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${text}</pre>`;
+
+    if (popup) {
+      popup.document.open();
+      popup.document.write(content);
+      popup.document.close();
+    } else {
+      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      window.location.assign(url);
+    }
+  } catch (err) {
+    const content = `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">พิมพ์ใบส่งสินค้าไม่สำเร็จ\n\n${String(
+      err
+    )}</pre>`;
+    if (popup) {
+      popup.document.open();
+      popup.document.write(content);
+      popup.document.close();
+    } else {
+      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      window.location.assign(url);
+    }
+  }
+};
 
   return (
     <div className="min-h-[calc(100vh-140px)] w-full">
