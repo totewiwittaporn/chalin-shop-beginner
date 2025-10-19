@@ -1,8 +1,21 @@
-import { prisma } from "#app/lib/prisma.js";
+// backend/src/controllers/sales/branch/salesController.js
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-function num(v, d = 0) { const n = Number(v); return Number.isFinite(n) ? n : d; }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
+// helper
+const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * POST /api/sales/branch
+ * Payload จาก POS:
+ * {
+ *   header: { branchId, docDate?, note? },
+ *   lines: [{ productId, name, qty, price, discount? }], // ❌ ไม่ต้องส่ง sku/barcode เข้าตรงๆ
+ *   totals: { subTotal, discountBill, grandTotal },
+ *   payment: { method, receive?, evidenceUrl? }
+ * }
+ */
 export async function createOrPaySaleBranch(req, res) {
   try {
     const p = req.body || {};
@@ -11,99 +24,104 @@ export async function createOrPaySaleBranch(req, res) {
     const totals = p.totals || {};
     const pay    = p.payment || null;
 
-    const branchId = Number(header.branchId ?? req.branchId);
+    const branchId = num(header.branchId ?? req.branchId);
     if (!branchId) return res.status(400).json({ message: "branchId is required" });
-    if (!lines.length) return res.status(400).json({ message: "lines is required" });
+    if (lines.length === 0) return res.status(400).json({ message: "lines is required" });
 
-    const subTotal   = num(totals.subTotal);
-    const discount   = num(totals.discountBill);
-    const grandTotal = num(totals.grandTotal);
-
-    const normLines = lines.map((ln, idx) => ({
-      lineNo: num(ln.no, idx + 1),
-      productId: ln.productId ?? null,
-      sku: ln.sku || null,
-      name: ln.name || "",
-      qty: num(ln.qty),
-      price: num(ln.price),
-      discount: num(ln.discount),
-      amount: num(ln.amount),
+    // ทำให้เข้ากับ schema จริง (SaleItem ไม่มี sku/barcode)
+    const cleanLines = lines.map((it) => ({
+      productId : num(it.productId),
+      name      : String(it.name ?? ""),
+      qty       : num(it.qty),
+      unitPrice : num(it.price),
+      discount  : num(it.discount),
     }));
 
-    const sale = await prisma.$transaction(async (tx) => {
-      const created = await tx.sale.create({
+    // คำนวณซ้ำฝั่ง server เพื่อความถูกต้อง
+    const subTotalFromLines = cleanLines.reduce((s, x) => s + x.unitPrice * x.qty, 0);
+    const discountFromLines = cleanLines.reduce((s, x) => s + x.discount, 0);
+    const billDiscount      = num(totals?.discountBill);
+    const subtotal          = subTotalFromLines;
+    const discount          = discountFromLines + billDiscount;
+    const total             = Math.max(0, subtotal - discount);
+
+    const docDate = header?.docDate ? new Date(header.docDate) : new Date(todayISO());
+    const status  = "PAID"; // POS: จ่ายแล้วเป็น PAID
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1) ตรวจสต็อกสาขา
+      for (const ln of cleanLines) {
+        const inv = await tx.inventory.findFirst({
+          where: { branchId, productId: ln.productId },
+          select: { id: true, qty: true },
+        });
+        const current = num(inv?.qty);
+        if (ln.qty > current) {
+          throw new Error(
+            `สินค้า productId=${ln.productId} สต็อกไม่พอในสาขา ${branchId} : ต้องการ ${ln.qty} แต่มี ${current}`
+          );
+        }
+      }
+
+      // 2) สร้างเอกสารขาย + รายการ + ชำระเงิน (ตาม schema จริง)
+      const sale = await tx.sale.create({
         data: {
           branchId,
-          docDate: new Date(header.docDate || todayISO()),
-          note: header.note || null,
-          status: pay ? "PAID" : "DRAFT",
-          subtotal: subTotal,
-          discount: discount,
-          total: grandTotal,
+          date    : new Date(docDate.toISOString().slice(0, 10)), // เก็บแบบ date-only
+          note    : header?.note ?? null,
+          status,
+          subtotal,
+          discount,
+          total,
           items: {
-            create: normLines.map((ln) => ({
-              productId: ln.productId,
-              sku: ln.sku,
-              name: ln.name,
-              qty: ln.qty,
-              unitPrice: ln.price,
-              lineTotal: ln.amount,
+            create: cleanLines.map((x) => ({
+              productId : x.productId,
+              name      : x.name,
+              qty       : x.qty,
+              unitPrice : x.unitPrice,
+              lineTotal : x.unitPrice * x.qty - x.discount,
             })),
           },
+          payments: pay
+            ? {
+                create: [
+                  {
+                    method     : pay.method || "CASH",
+                    amount     : num(pay.receive ?? total), // เก็บยอดรับจริง
+                    evidenceUrl: pay.evidenceUrl ?? null,
+                  },
+                ],
+              }
+            : undefined,
         },
-        include: { items: true },
-      });
-
-      if (!pay) return created;
-
-      await tx.payment.createMany({
-        data: [{
-          saleId: created.id,
-          method: String(pay.method || "").toUpperCase(),
-          amount: num(pay.receive) - num(pay.change),
-          evidenceUrl: pay.evidenceUrl || null,
-          ref: pay.ref || null,
-        }],
-      });
-
-      for (const it of created.items) {
-        const qty = Math.abs(num(it.qty));
-        if (!qty) continue;
-        await tx.inventory.upsert({
-          where: { branchId_productId: { branchId: created.branchId, productId: it.productId } },
-          create: { branchId: created.branchId, productId: it.productId, qty: -qty, reserved: 0 },
-          update: { qty: { decrement: qty } },
-        });
-      }
-      if (created.items.length) {
-        await tx.stockLedger.createMany({
-          data: created.items.map((it) => ({
-            productId: it.productId,
-            branchId: created.branchId,
-            qty: -Math.abs(num(it.qty)),
-            type: "SALE",
-            refTable: "Sale",
-            refId: created.id,
-            unitCost: null,
-          })),
-        });
-      }
-
-      const finalSale = await tx.sale.update({
-        where: { id: created.id },
-        data: { status: "PAID" },
         include: { items: true, payments: true },
       });
-      return finalSale;
+
+      // 3) ตัดสต็อกสาขา
+      for (const x of cleanLines) {
+        await tx.inventory.updateMany({
+          where: { branchId, productId: x.productId },
+          data : { qty: { decrement: x.qty } },
+        });
+      }
+
+      return sale;
     });
 
-    res.status(pay ? 201 : 200).json({ id: sale.id, docNo: sale.code || sale.docNo || sale.id, sale });
+    return res.status(201).json({ message: "บันทึกการขายสำเร็จ", sale: result });
   } catch (e) {
     console.error("createOrPaySaleBranch error:", e);
-    res.status(500).json({ message: "Failed to create/pay sale (branch)", detail: String(e?.message || e) });
+    return res.status(500).json({
+      message: "CREATE_SALE_FAILED",
+      detail : String(e?.message || e),
+    });
   }
 }
 
+/**
+ * GET /api/sales/branch
+ * Query: page, pageSize, branchId?, q?
+ */
 export async function listSalesBranch(req, res) {
   try {
     const { q, page = 1, pageSize = 20, branchId } = req.query || {};
@@ -114,85 +132,30 @@ export async function listSalesBranch(req, res) {
     if (branchId) where.branchId = Number(branchId);
     if (q) {
       where.OR = [
-        { code: { contains: q, mode: "insensitive" } },
-        { docNo: { contains: q, mode: "insensitive" } },
-        { note: { contains: q, mode: "insensitive" } },
+        { note:  { contains: q, mode: "insensitive" } },
+        // เติม field อื่นที่มีจริงใน Sale เช่น code/docNo ถ้าคุณมี
       ];
     }
 
-    const [rows, total] = await Promise.all([
+    const [items, total] = await Promise.all([
       prisma.sale.findMany({
         where,
         orderBy: { id: "desc" },
-        skip, take,
-        select: {
-          id: true, code: true, docNo: true, docDate: true,
-          total: true, status: true, branchId: true,
-          paymentMethod: true, customerName: true,
+        take,
+        skip,
+        include: {
+          // include อื่นๆ ตามต้องการ เช่น branch: true, items: true
         },
       }),
       prisma.sale.count({ where }),
     ]);
 
-    res.json({ rows, total, page: Number(page), pageSize: take });
+    res.json({ items, total });
   } catch (e) {
     console.error("listSalesBranch error:", e);
-    res.status(500).json({ message: "Failed to list sales (branch)" });
+    res.status(500).json({ message: "LIST_SALE_FAILED", detail: String(e?.message || e) });
   }
 }
 
-export async function printSaleBranch(req, res) {
-  try {
-    const id = Number(req.params.id);
-    const size = String(req.query.size || "a4").toLowerCase();
-    const sale = await prisma.sale.findUnique({
-      where: { id },
-      include: { items: { orderBy: { id: "asc" } } },
-    });
-    if (!sale) return res.status(404).send("NOT_FOUND");
-
-    const css = `
-      body{font-family: ui-sans-serif, system-ui; padding:16px;}
-      table{border-collapse: collapse; width: 100%;}
-      th,td{border:1px solid #e5e7eb; padding:6px 8px; font-size:12px;}
-      thead{background:#f8fafc;}
-      .right{text-align:right}
-      h1{font-size:18px;margin-bottom:8px;}
-    `;
-    const rows = (sale.items || [])
-      .map((it, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${it.name || ""}</td>
-          <td class="right">${num(it.qty).toLocaleString()}</td>
-          <td class="right">${num(it.unitPrice).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-          <td class="right">${num(it.lineTotal).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-        </tr>
-      `).join("");
-
-    const title = size === "58" ? "ใบเสร็จ (ย่อ 58mm)" : "ใบเสร็จ (A4)";
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    return res.send(`
-      <!doctype html><html><head><meta charset="utf-8"/>
-      <title>${sale.code || sale.docNo || sale.id}</title>
-      <style>@page{margin:${size==="58"?"6mm":"12mm"}}${css}</style>
-      </head><body>
-        <h1>${title}</h1>
-        <div>เลขที่: ${sale.code || sale.docNo || sale.id}</div>
-        <div>วันที่: ${(sale.docDate instanceof Date ? sale.docDate : new Date(sale.docDate)).toISOString().slice(0,10)}</div>
-        <hr style="margin:10px 0"/>
-        <table>
-          <thead><tr><th>#</th><th>สินค้า</th><th class="right">Qty</th><th class="right">ราคา</th><th class="right">รวม</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div style="margin-top:10px; text-align:right">
-          <b>ยอดสุทธิ: ${num(sale.total).toLocaleString(undefined,{minimumFractionDigits:2})}</b>
-        </div>
-        <script>window.onload = () => window.print && window.print();</script>
-      </body></html>
-    `);
-  } catch (e) {
-    console.error("printSaleBranch error:", e);
-    res.status(500).send("PRINT_FAILED");
-  }
-}
+// (ถ้าต้องมีพิมพ์ใบเสร็จ)
+// export async function printSaleBranch(req, res) { ... }

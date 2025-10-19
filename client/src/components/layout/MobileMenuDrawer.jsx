@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Link } from 'react-router-dom';
-import { MOBILE_GROUPS } from '@/nav.config.js'; // ปรับพาธให้ตรงกับไฟล์เมนูคุณ
+import { MOBILE_GROUPS } from '@/nav.config'; // ปรับพาธให้ตรงกับไฟล์เมนูคุณ
 
 function Group({ label, items, defaultOpen=false, onItemClick }) {
   const [open, setOpen] = useState(defaultOpen);

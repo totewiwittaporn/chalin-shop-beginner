@@ -6,7 +6,7 @@ import authMeRoutes from "#app/routes/auth/auth.me.routes.js";
 
 // PROTECTED
 import productsRoutes from "#app/routes/products/products.routes.js";
-import productTypesRoutes from "#app/routes/products/productTypes.routes.js"; // ✅ แก้ให้ชี้โฟลเดอร์ products
+import productTypesRoutes from "#app/routes/products/productTypes.routes.js";
 import branchesRoutes from "#app/routes/branches/branches.routes.js";
 import usersRoutes from "#app/routes/users/users.routes.js";
 import salesBranchRoutes from "#app/routes/sales/branch/sales.routes.js";
@@ -32,15 +32,17 @@ export function mountPublicRoutes(app) {
 
 export function mountProtectedRoutes(app) {
   app.use("/api/products", productsRoutes);
-  app.use("/api/product-types", productTypesRoutes); // ✅ ใช้งานได้แล้ว
+  app.use("/api/product-types", productTypesRoutes);
 
   app.use("/api/users", usersRoutes);
   app.use("/api/branches", branchesRoutes);
+
+  // ✅ ติดตั้งเส้นทางสำหรับ POS สาขา
   app.use("/api/sales/branch", salesBranchRoutes);
 
   // Consignment
   app.use("/api/consignment/partners", consignmentPartnersRouter);
-  app.use("/api/consignment/partners", consignmentCategoriesRouter);
+  app.use("/api/consignment/categories", consignmentCategoriesRouter);
   app.use("/api/consignment/categories", consignmentCategoryProductsRouter);
 
   // Others
@@ -51,5 +53,4 @@ export function mountProtectedRoutes(app) {
   app.use("/api", bankAccountsRoutes);
   app.use("/api/deliveries", deliveriesRoutes);
   app.use("/api/print", printRoutes);
-
 }

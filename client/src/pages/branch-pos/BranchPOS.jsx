@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+// client/src/pages/branch-pos/BranchPOS.jsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import GradientPanel from "@/components/theme/GradientPanel";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -10,29 +11,46 @@ import SummaryPanel from "./SummaryPanel";
 import PaymentModal from "./PaymentModal";
 import SalesDocsTable from "./SalesDocsTable";
 import BranchSwitcher from "@/components/branch/BranchSwitcher";
+import { searchProductsSimple } from "@/api/products";
+import api from "@/lib/api";
 
-const DEFAULT_ROLE = "STAFF"; // 'ADMIN' | 'STAFF'
+const DEFAULT_ROLE = "ADMIN";
 const DEFAULT_BRANCH_NAME = "สาขาหลัก";
 const STAFF_DISCOUNT_CAPS = { pctMax: 10, amountMax: 200 };
 
-export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BRANCH_NAME, branchId: staffBranchId }) {
+export default function BranchPOS({
+  role = DEFAULT_ROLE,
+  branchName = DEFAULT_BRANCH_NAME,
+  branchId: staffBranchId,
+}) {
   const [cart, setCart] = useState([]);
   const [discountBill, setDiscountBill] = useState({ type: "amount", value: 0 });
   const [note, setNote] = useState("");
 
   const [q, setQ] = useState("");
+  const [suggests, setSuggests] = useState([]);
+  const [openSuggest, setOpenSuggest] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+  const fetchTimer = useRef(null);
+
   const [openScanner, setOpenScanner] = useState(false);
   const [openPayment, setOpenPayment] = useState(false);
 
   const docsTableRef = useRef(null);
+  const containerRef = useRef(null);
 
   const [branchCtx, setBranchCtx] = useState(() => {
     try { return JSON.parse(localStorage.getItem("pos.branchCtx") || "null"); } catch { return null; }
   });
 
   const fixedBranch = role === "STAFF" ? { id: staffBranchId, name: branchName } : null;
+  const currentBranchId = role === "ADMIN" ? branchCtx?.id : fixedBranch?.id;
 
-  const subtotal = useMemo(() => cart.reduce((s, it) => s + (it.unitPrice * it.qty - (it.lineDiscount || 0)), 0), [cart]);
+  const subtotal = useMemo(
+    () => cart.reduce((s, it) => s + (it.unitPrice * it.qty - (it.lineDiscount || 0)), 0),
+    [cart]
+  );
+
   const billDiscountAmount = useMemo(() => {
     if (discountBill.type === "percent") {
       const pct = Math.min(100, Math.max(0, Number(discountBill.value) || 0));
@@ -40,53 +58,62 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
     }
     return Math.max(0, Number(discountBill.value) || 0);
   }, [discountBill, subtotal]);
+
   const total = useMemo(() => Math.max(0, subtotal - billDiscountAmount), [subtotal, billDiscountAmount]);
 
   const canEditPrice = role === "ADMIN";
   const discountCaps = role === "ADMIN" ? null : STAFF_DISCOUNT_CAPS;
 
+  // -------------------- Cart helpers --------------------
   function addOrIncLine(product, opts = { qty: 1, merge: true }) {
+    const qtyToAdd = Number(opts.qty || 1);
     setCart((prev) => {
-      const qty = Number(opts.qty || 1);
-      const unitPrice = Number(product.unitPrice ?? product.price ?? 0);
-      const idx = opts.merge !== false ? prev.findIndex(x => x.productId === product.id && x.unitPrice === unitPrice) : -1;
+      const idx = opts.merge !== false
+        ? prev.findIndex(x => x.productId === product.id && x.unitPrice === product.price)
+        : -1;
+
+      const available = product.stockQty != null ? Number(product.stockQty) : Infinity;
+
       if (idx >= 0) {
+        const cur = prev[idx];
+        const nextQty = Math.min(available, cur.qty + qtyToAdd);
+        if (nextQty === cur.qty) return prev;
         const next = [...prev];
-        next[idx] = { ...next[idx], qty: next[idx].qty + qty };
+        next[idx] = { ...cur, qty: nextQty };
         return next;
       }
+
+      if (available <= 0) return prev;
+
       const line = {
         lineId: crypto.randomUUID(),
         productId: product.id,
-        sku: product.sku || "",
-        name: product.name || `สินค้า #${product.id}`,
-        unitPrice,
-        qty,
+        sku: product.sku || product.barcode || null,
+        name: product.name || "",
+        qty: Math.min(qtyToAdd, available),
+        unitPrice: Number(product.price) || 0,
         lineDiscount: 0,
+        stockQty: available,
       };
       return [...prev, line];
     });
   }
 
-  function handleQuickAdd(input) {
-    const txt = String(input || "").trim();
-    if (!txt) return;
-    const isNumeric = /^\d+$/.test(txt);
-    const mock = isNumeric
-      ? { id: Number(txt.slice(-6)) || Math.floor(Math.random() * 100000), sku: txt, name: `สินค้า-${txt}`, unitPrice: 25 }
-      : { id: Math.floor(Math.random() * 100000), sku: txt.toUpperCase().replace(/\s+/g, "-"), name: txt, unitPrice: 25 };
-    addOrIncLine(mock, { qty: 1, merge: true });
-  }
+  const onChangeQty = (lineId, qty) =>
+    setCart((c) => c.map((x) => {
+      if (x.lineId !== lineId) return x;
+      const want = Math.max(0, Number(qty) || 0);
+      const limit = Number(x.stockQty ?? Infinity);
+      return { ...x, qty: Math.min(want, limit) };
+    }));
 
-  function handleScanDetected(code) {
-    handleQuickAdd(code);
-    setOpenScanner(false);
-  }
+  const onChangePrice = (lineId, price) =>
+    setCart((c) => c.map((x) => x.lineId === lineId ? { ...x, unitPrice: Math.max(0, Number(price) || 0) } : x));
 
-  const onChangeQty = (lineId, qty) => setCart(c => c.map(x => x.lineId === lineId ? { ...x, qty: Math.max(0, Number(qty) || 0) } : x));
-  const onChangePrice = (lineId, price) => setCart(c => c.map(x => x.lineId === lineId ? { ...x, unitPrice: Math.max(0, Number(price) || 0) } : x));
-  const onChangeLineDiscount = (lineId, v) => setCart(c => c.map(x => x.lineId === lineId ? { ...x, lineDiscount: Math.max(0, Number(v) || 0) } : x));
-  const onRemove = (lineId) => setCart(c => c.filter(x => x.lineId !== lineId));
+  const onChangeLineDiscount = (lineId, v) =>
+    setCart((c) => c.map((x) => x.lineId === lineId ? { ...x, lineDiscount: Math.max(0, Number(v) || 0) } : x));
+
+  const onRemove = (lineId) => setCart((c) => c.filter((x) => x.lineId !== lineId));
 
   function clearAll() {
     if (confirm("ล้างตะกร้าทั้งหมด?")) {
@@ -96,16 +123,83 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
     }
   }
 
+  // -------------------- Autocomplete: ใช้ Axios + ส่ง branchId --------------------
+  useEffect(() => {
+    if (fetchTimer.current) clearTimeout(fetchTimer.current);
+    if (!q.trim()) {
+      setSuggests([]);
+      setOpenSuggest(false);
+      setHighlight(-1);
+      return;
+    }
+    fetchTimer.current = setTimeout(async () => {
+      try {
+        const items = await searchProductsSimple(q.trim(), 20, currentBranchId);
+        setSuggests(items);
+        setOpenSuggest(true);
+        setHighlight(items.length ? 0 : -1);
+      } catch (e) {
+        console.error("autocomplete search failed:", e);
+        setSuggests([]);
+        setOpenSuggest(false);
+        setHighlight(-1);
+      }
+    }, 200);
+    return () => fetchTimer.current && clearTimeout(fetchTimer.current);
+  }, [q, currentBranchId]);
+
+  function focusSearch() {
+    document.getElementById("pos-search")?.focus();
+  }
+
+  function chooseSuggestByIndex(i) {
+    const it = suggests[i];
+    if (!it) return;
+    addOrIncLine({
+      id: it.id,
+      name: it.name,
+      price: it.price,
+      barcode: it.barcode,
+      sku: it.sku,
+      stockQty: it.stockQty ?? Infinity,
+    }, { qty: 1, merge: true });
+
+    setQ("");
+    setSuggests([]);
+    setOpenSuggest(false);
+    setHighlight(-1);
+    focusSearch();
+  }
+
+  function onSearchKeyDown(e) {
+    if (!openSuggest || !suggests.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => Math.min(h + 1, suggests.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlight >= 0) chooseSuggestByIndex(highlight);
+    } else if (e.key === "Escape") {
+      setOpenSuggest(false);
+    }
+  }
+
+  useEffect(() => {
+    function onDocClick(e) {
+      const box = containerRef.current;
+      if (box && !box.contains(e.target)) setOpenSuggest(false);
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
   function handleOpenPayment() {
     if (cart.length === 0) return;
-    if (role === "ADMIN" && !branchCtx?.id) {
-      alert("กรุณาเลือกสาขาที่ทำรายการก่อน");
-      return;
-    }
-    if (role === "STAFF" && !fixedBranch?.id) {
-      alert("ไม่พบสาขาของผู้ใช้ โปรดติดต่อผู้ดูแลระบบ");
-      return;
-    }
+    if (role === "ADMIN" && !currentBranchId) { alert("กรุณาเลือกสาขาที่ทำรายการก่อน"); return; }
+    if (role === "STAFF" && !currentBranchId) { alert("ไม่พบสาขาของผู้ใช้ โปรดติดต่อผู้ดูแลระบบ"); return; }
     setOpenPayment(true);
   }
 
@@ -116,22 +210,20 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
       catch (e) { console.error("upload evidence failed", e); alert("อัปโหลดหลักฐานไม่สำเร็จ"); return; }
     }
 
-    const branchId = role === "ADMIN" ? branchCtx.id : fixedBranch.id;
-
     const payload = {
       header: {
         docType: "SALE_POS",
         docDate: new Date().toISOString().slice(0, 10),
-        branchId,
+        branchId: currentBranchId,
         note,
       },
-      lines: cart.map((c, idx) => ({
-        no: idx + 1,
+      lines: cart.map((c, i) => ({
+        no: i + 1,
         sku: c.sku,
         name: c.name,
         qty: c.qty,
         price: c.unitPrice,
-        discount: c.lineDiscount || 0,
+        discount: Number(c.lineDiscount || 0),
         amount: c.unitPrice * c.qty - (c.lineDiscount || 0),
         productId: c.productId,
       })),
@@ -150,48 +242,72 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
     };
 
     try {
-      const res = await fetch("/api/sales/branch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`Save failed: ${res.status}`);
-      await res.json();
-
+      // ใช้ axios instance เพื่อแนบ token + baseURL
+      const { data } = await api.post("/api/sales/branch", payload);
+      // สำเร็จ → เคลียร์สถานะ
       setCart([]);
       setDiscountBill({ type: "amount", value: 0 });
       setNote("");
       setOpenPayment(false);
-
-      if (docsTableRef.current?.refreshFromStart) {
-        docsTableRef.current.refreshFromStart();
-      }
+      docsTableRef.current?.reload?.();
     } catch (e) {
-      console.error("save sale failed:", e);
-      alert("บันทึกเอกสารขายไม่สำเร็จ");
+      console.error(e);
+      alert("บันทึก/ชำระเงินไม่สำเร็จ");
     }
   }
+
+  function handleScanDetected(code) {
+    setQ(String(code || "").trim());
+    setOpenScanner(false);
+    focusSearch();
+  }
+
+  const branchTitle = role === "ADMIN"
+    ? (branchCtx?.name || "ยังไม่เลือกสาขา")
+    : (fixedBranch?.name || "ไม่ทราบสาขา");
 
   return (
     <div className="space-y-6">
       <GradientPanel
-        title={`POS — ${role === "ADMIN" ? (branchCtx?.name || "ยังไม่เลือกสาขา") : (fixedBranch?.name || "ไม่ทราบสาขา")}`}
+        title={`POS — ${branchTitle}`}
         subtitle="ค้นหาหรือสแกนเพื่อเพิ่มสินค้าอย่างรวดเร็ว"
         actions={
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap relative">
             <BranchSwitcher
               role={role}
               fixedBranch={fixedBranch}
+              fetchPath="/api/branches"
               onChange={(ctx) => setBranchCtx(ctx)}
-              fetchUrl="/api/branches"
             />
-            <Input
-              placeholder="ค้นหา: บาร์โค้ด / SKU / ชื่อสินค้า (Enter เพื่อเพิ่ม)"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && q.trim()) { handleQuickAdd(q); setQ(""); } }}
-              className="w-[320px]"
-            />
+
+            {/* ช่องค้นหาหลัก + Autocomplete */}
+            <div ref={containerRef} className="relative w-[360px] max-w-full text-gray-800">
+              <Input
+                id="pos-search"
+                placeholder="ค้นหา: บาร์โค้ด / SKU / ชื่อสินค้า"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={onSearchKeyDown}
+                onFocus={() => { if (suggests.length) setOpenSuggest(true); }}
+              />
+              {openSuggest && suggests.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+                  {suggests.map((s, i) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => chooseSuggestByIndex(i)}
+                      className={`w-full text-left px-3 py-2 flex items-center justify-between ${i === highlight ? "bg-blue-50" : "bg-white"} hover:bg-blue-50`}
+                    >
+                      <span className="truncate">{s.name}</span>
+                      <span className="text-xs text-slate-800 ml-3">{s.barcode || s.sku || "-"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Button kind="primary" onClick={() => setOpenScanner(true)}>สแกนบาร์โค้ด</Button>
             <Button kind="danger" onClick={clearAll}>เคลียร์</Button>
           </div>
@@ -212,22 +328,22 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
                 onChangePrice={onChangePrice}
                 onChangeLineDiscount={onChangeLineDiscount}
                 onRemove={onRemove}
-                onQuickAdd={(txt) => { handleQuickAdd(txt); }}
               />
             </Card.Body>
           </Card>
 
           <SummaryPanel
-            role={role}
             subtotal={subtotal}
+            billDiscountAmount={billDiscountAmount}
             discountBill={discountBill}
+            setDiscountBill={setDiscountBill}
+            total={total}
+            role={role}
+            canEditPrice={canEditPrice}
             discountCaps={discountCaps}
-            note={note}
-            onChangeBillDiscount={(type, value) => setDiscountBill({ type, value })}
-            onChangeNote={(v) => setNote(v)}
             onOpenPayment={handleOpenPayment}
-            onSaveDraft={() => alert("(mock) บันทึกพักบิลไว้ในเครื่อง")}
-            onClear={clearAll}
+            note={note}
+            setNote={setNote}
             cartEmpty={cart.length === 0}
           />
         </div>
@@ -237,8 +353,8 @@ export default function BranchPOS({ role = DEFAULT_ROLE, branchName = DEFAULT_BR
 
       <PaymentModal open={openPayment} onClose={() => setOpenPayment(false)} total={total} role={role} onConfirm={onConfirmPayment} />
 
-      {/* ตารางรายงาน/เอกสารการขาย — อยู่หน้าเดียวกัน */}
-      <SalesDocsTable ref={docsTableRef} />
+      {/* ใช้ค่าเริ่มต้น apiPath = "/api/sales/branch" ซึ่งตรงกับ backend */}
+      <SalesDocsTable ref={docsTableRef} branchId={currentBranchId} />
     </div>
   );
 }

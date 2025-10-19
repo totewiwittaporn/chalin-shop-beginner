@@ -1,181 +1,183 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+// client/src/pages/branch-pos/SalesDocsTable.jsx
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from "react";
 import Card from "@/components/ui/Card";
+import Table from "@/components/ui/Table";
 import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import {
-  openPopupWithMessage,
-  showHtmlInPopup,
-  showPdfInPopup,
-  printAndClose,
-} from "@/services/printPopup";
+import api from "@/lib/api";
 
-const API_LIST = "/api/sales/branch"; // GET ?q=&dateFrom=&dateTo=&page=&pageSize=
-const apiPrintHtml = (id, size) => `/api/sales/branch/${id}/print?size=${size}`; // html default
-const apiPrintPdf  = (id, size) => `/api/sales/branch/${id}/print?size=${size}&format=pdf`;
-
-function useSalesList({ pageSize = 20 }) {
+/**
+ * Props:
+ *  - branchId?: number
+ *  - pageSize?: number = 10
+ *  - apiPath?: string = "/api/sales/branch"  // GET list endpoint (ตรงกับ backend)
+ */
+const SalesDocsTable = forwardRef(function SalesDocsTable(
+  {
+    branchId,
+    pageSize = 10,
+    apiPath = "/api/sales/branch",
+    title = "เอกสารขายล่าสุด",
+  },
+  ref
+) {
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [q, setQ] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
 
-  async function fetchList({ resetPage = false } = {}) {
+  const queryParams = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set("page", String(page));
+    p.set("pageSize", String(pageSize));
+    if (branchId) p.set("branchId", String(branchId));
+    return p.toString();
+  }, [page, pageSize, branchId]);
+
+  async function fetchList() {
     setLoading(true);
+    setErr("");
     try {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      params.set("page", String(resetPage ? 1 : page));
-      params.set("pageSize", String(pageSize));
+      // ใช้ axios instance => baseURL + Authorization header พร้อมใช้งาน
+      const { data } = await api.get(`${apiPath}?${queryParams}`);
 
-      const res = await fetch(`${API_LIST}?${params.toString()}`, { method: "GET" });
-      const data = await res.json();
-      const items = Array.isArray(data?.rows) ? data.rows : (Array.isArray(data?.items) ? data.items : []);
-      setRows(items);
-      if (resetPage) setPage(1);
+      const items = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.items)
+        ? data.items
+        : [];
+
+      const norm = items.map((d) => ({
+        id: d.id ?? d.docId ?? d._id ?? crypto.randomUUID(),
+        docNo: d.docNo ?? d.number ?? d.code ?? "-",
+        docDate: d.docDate ?? d.date ?? d.createdAt ?? null,
+        branchName: d.branchName ?? d.branch?.name ?? "-",
+        total: Number(
+          d.total ??
+            d.grandTotal ??
+            d.amount ??
+            (typeof d.totals?.grandTotal !== "undefined"
+              ? d.totals.grandTotal
+              : 0)
+        ),
+        createdBy: d.createdBy ?? d.userName ?? d.createdUser ?? "-",
+        status: d.status ?? "-",
+      }));
+
+      setRows(norm);
+      setTotal(Number(data?.total ?? norm.length));
     } catch (e) {
-      console.error("fetch sales list failed:", e);
+      console.error("list sales failed:", e);
       setRows([]);
+      setTotal(0);
+      setErr("โหลดรายการไม่สำเร็จ");
     } finally {
       setLoading(false);
     }
   }
 
-  return {
-    state: { rows, loading, q, dateFrom, dateTo, page, pageSize },
-    set:   { setQ, setDateFrom, setDateTo, setPage },
-    fetchList,
-  };
-}
+  useEffect(() => {
+    fetchList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryParams, apiPath]);
 
-const SalesDocsTable = forwardRef(function SalesDocsTable(_props, ref) {
-  const { state, set, fetchList } = useSalesList({ pageSize: 20 });
+  useImperativeHandle(ref, () => ({ reload: () => fetchList() }));
 
-  useEffect(() => { fetchList(); /* eslint-disable-next-line */ }, [state.page]);
-
-  useImperativeHandle(ref, () => ({
-    refresh: () => fetchList(),
-    refreshFromStart: () => fetchList({ resetPage: true }),
-  }), [fetchList]);
-
-  const totalAmount = useMemo(
-    () => state.rows.reduce((s, r) => s + Number(r?.total || r?.grandTotal || 0), 0),
-    [state.rows]
-  );
-
-  async function viewHtml(id, size /* 'a4' | '58' */) {
-    const popup = openPopupWithMessage("<div>กำลังโหลดเอกสาร...</div>");
-    try {
-      const res = await fetch(apiPrintHtml(id, size), { method: "GET" });
-      const text = await res.text();
-      const content =
-        /^\s*{/.test(text) && /}\s*$/.test(text)
-          ? `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${text}</pre>`
-          : text;
-      if (popup) showHtmlInPopup(popup, content);
-      else {
-        const blob = new Blob([content], { type: "text/html;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        window.location.assign(url);
-      }
-    } catch (e) {
-      if (popup) showHtmlInPopup(popup, `<pre style="white-space:pre-wrap">โหลดเอกสารไม่สำเร็จ\n\n${String(e)}</pre>`);
-    }
-  }
-
-  async function printPdf(id, size /* 'a4' | '58' */) {
-    const popup = openPopupWithMessage("<div>กำลังเตรียมไฟล์ PDF...</div>");
-    try {
-      const res = await fetch(apiPrintPdf(id, size), { method: "GET" });
-      const ctype = (res.headers.get("content-type") || "").toLowerCase();
-
-      if (ctype.includes("application/pdf")) {
-        const buf = await res.arrayBuffer();
-        const url = URL.createObjectURL(new Blob([buf], { type: "application/pdf" }));
-        if (popup) { showPdfInPopup(popup, url); printAndClose(popup, 300); }
-        else { window.location.assign(url); }
-      } else {
-        const text = await res.text();
-        const content = /<\/?(html|body|head)/i.test(text)
-          ? text
-          : `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace">${text}</pre>`;
-        if (popup) showHtmlInPopup(popup, content);
-      }
-    } catch (e) {
-      if (popup) showHtmlInPopup(popup, `<pre style="white-space:pre-wrap">พิมพ์เอกสารไม่สำเร็จ\n\n${String(e)}</pre>`);
-    }
-  }
+  const pageCount = Math.max(1, Math.ceil((total || 0) / pageSize));
+  const money = (n) =>
+    (Number(n) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
   return (
     <Card>
       <Card.Header className="flex items-center justify-between">
-        <div className="font-medium">รายงาน/เอกสารการขาย (สาขา)</div>
-        <div className="text-sm text-slate-500">
-          {state.loading
-            ? "กำลังโหลด..."
-            : `ทั้งหมด ${state.rows.length.toLocaleString()} รายการ | รวมยอด ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+        <div className="font-medium">{title}</div>
+        <div className="text-xs text-slate-500">
+          หน้า {page} / {pageCount}
         </div>
       </Card.Header>
-      <Card.Body>
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Input placeholder="ค้นหาเลขที่/ลูกค้า" value={state.q} onChange={(e) => set.setQ(e.target.value)} />
-          <Input type="date" value={state.dateFrom} onChange={(e) => set.setDateFrom(e.target.value)} />
-          <Input type="date" value={state.dateTo} onChange={(e) => set.setDateTo(e.target.value)} />
-          <Button kind="primary" onClick={() => fetchList({ resetPage: true })}>ค้นหา</Button>
-        </div>
 
+      <Card.Body>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left">วันที่</th>
-                <th className="px-3 py-2 text-left">เลขที่เอกสาร</th>
-                <th className="px-3 py-2 text-left">ลูกค้า</th>
-                <th className="px-3 py-2 text-right">ยอดสุทธิ</th>
-                <th className="px-3 py-2 text-left">วิธีชำระ</th>
-                <th className="px-3 py-2 text-left">สถานะ</th>
-                <th className="px-3 py-2">การทำงาน</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.rows.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-3 py-2">{(r.docDate || "").slice(0,10)}</td>
-                  <td className="px-3 py-2">{r.code || r.docNo || r.id}</td>
-                  <td className="px-3 py-2">{r.customerName || "Walk-in"}</td>
-                  <td className="px-3 py-2 text-right">
-                    {Number(r.total ?? r.grandTotal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-3 py-2">{r.paymentMethod || "-"}</td>
-                  <td className="px-3 py-2">{r.status || "POSTED"}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button kind="white" onClick={() => viewHtml(r.id, "58")}>ดูใบเสร็จย่อ (58)</Button>
-                      <Button kind="white" onClick={() => viewHtml(r.id, "a4")}>ดูใบเสร็จเต็ม (A4)</Button>
-                      <Button kind="primary" onClick={() => printPdf(r.id, "58")}>พิมพ์ย่อ</Button>
-                      <Button kind="primary" onClick={() => printPdf(r.id, "a4")}>พิมพ์เต็ม</Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {state.rows.length === 0 && !state.loading && (
-                <tr>
-                  <td className="px-3 py-6 text-center text-slate-400" colSpan={7}>
-                    ไม่มีรายการ
-                  </td>
-                </tr>
+          <Table>
+            <Table.Head>
+              <Table.Tr>
+                <Table.Th className="w-10">#</Table.Th>
+                <Table.Th className="w-36">เลขที่เอกสาร</Table.Th>
+                <Table.Th className="w-32">วันที่</Table.Th>
+                <Table.Th>สาขา</Table.Th>
+                <Table.Th className="w-32 text-right">ยอดรวม</Table.Th>
+                <Table.Th className="w-32">โดย</Table.Th>
+                <Table.Th className="w-28">สถานะ</Table.Th>
+              </Table.Tr>
+            </Table.Head>
+
+            <Table.Body>
+              {rows.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={7} className="py-8 text-center text-slate-500">
+                    {loading ? "กำลังโหลด..." : err || "ยังไม่มีรายการ"}
+                  </Table.Td>
+                </Table.Tr>
+              ) : (
+                rows.map((r, idx) => (
+                  <Table.Tr key={r.id}>
+                    <Table.Td>{(page - 1) * pageSize + idx + 1}</Table.Td>
+                    <Table.Td className="font-medium">{r.docNo}</Table.Td>
+                    <Table.Td>
+                      {r.docDate
+                        ? new Date(r.docDate).toLocaleDateString()
+                        : "-"}
+                    </Table.Td>
+                    <Table.Td>{r.branchName || "-"}</Table.Td>
+                    <Table.Td className="text-right">{money(r.total)}</Table.Td>
+                    <Table.Td>{r.createdBy}</Table.Td>
+                    <Table.Td>{r.status}</Table.Td>
+                  </Table.Tr>
+                ))
               )}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table>
         </div>
       </Card.Body>
-      <Card.Footer className="flex justify-between items-center">
-        <Button kind="white" onClick={() => set.setPage((p) => Math.max(1, p - 1))}>ก่อนหน้า</Button>
-        <div className="text-sm text-slate-500">หน้า {state.page}</div>
-        <Button kind="white" onClick={() => set.setPage((p) => p + 1)}>ถัดไป</Button>
+
+      <Card.Footer className="flex items-center justify-between">
+        <div className="text-xs text-slate-500">
+          ทั้งหมด {total} รายการ
+          {branchId ? ` • สาขา: ${branchId}` : ""}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            kind="white"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            ก่อนหน้า
+          </Button>
+          <Button
+            kind="white"
+            disabled={page >= pageCount || loading}
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          >
+            ถัดไป
+          </Button>
+          <Button
+            kind="primary"
+            disabled={loading}
+            onClick={() => fetchList()}
+            title="รีเฟรช"
+          >
+            รีเฟรช
+          </Button>
+        </div>
       </Card.Footer>
     </Card>
   );
