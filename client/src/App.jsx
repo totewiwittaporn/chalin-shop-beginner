@@ -22,10 +22,10 @@ import InventoryPage from '@/pages/inventory/InventoryPage';
 import UsersPage from '@/pages/users/UsersPage.jsx';
 
 // ==== หน้าใหม่ (POS/Delivery ที่เราใช้อยู่)
-import BranchPOS from '@/pages/branch-pos/BranchPOS';
-import ConsignmentPOS from '@/pages/pos/ConsignmentPOS';
-import BranchDelivery from '@/pages/delivery/BranchDelivery';
-import ConsignmentDelivery from '@/pages/delivery/ConsignmentDelivery';
+import BranchPOS from '@/pages/pos/branch/BranchPOS';
+import ConsignmentPOS from '@/pages/pos/consignment/ConsignmentPOS';
+import BranchDelivery from '@/pages/delivery/branch/BranchDelivery';
+import ConsignmentDelivery from '@/pages/delivery/consignment/ConsignmentDelivery';
 
 // Docs
 

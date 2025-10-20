@@ -22,7 +22,7 @@ import suppliersRouter from "#app/routes/suppliers/suppliers.routes.js";
 import ordersRoutes from "#app/routes/orders/orders.routes.js";
 import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
 import bankAccountsRoutes from "#app/routes/bank/bank-accounts.routes.js";
-import deliveriesRoutes from "#app/routes/deliveries/deliveries.routes.js";
+import deliveriesRoutes from "#app/routes/deliveries/branchDeliveries.routes.js";
 import printRoutes from "#app/routes/print.routes.js";
 
 // ✅ แก้ให้ชี้ไฟล์ใหม่ที่ถูกต้อง

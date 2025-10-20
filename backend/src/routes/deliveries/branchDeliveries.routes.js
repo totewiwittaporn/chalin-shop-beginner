@@ -5,7 +5,7 @@ import {
   listDeliveries,
   getDelivery,
   receiveDelivery,
-} from "#app/controllers/deliveries/deliveriesController.js";
+} from "#app/controllers/deliveries/branchDeliveries.controller.js";
 
 const router = Router();
 
