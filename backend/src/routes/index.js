@@ -15,6 +15,7 @@ import salesBranchRoutes from "#app/routes/sales/branch/sales.routes.js";
 import consignmentPartnersRouter from "#app/routes/consignment/consignment.partners.routes.js";
 import consignmentCategoriesRouter from "#app/routes/consignment/consignment.categories.routes.js";
 import consignmentCategoryProductsRouter from "#app/routes/consignment/consignment.categoryProducts.routes.js";
+import consignmentDeliveriesRoutes from '#app/routes/deliveries/consignmentDeliveries.routes.js';
 
 // Others
 import purchasesRouter from "#app/routes/purchases/purchases.routes.js";
@@ -46,6 +47,7 @@ export function mountProtectedRoutes(app) {
   app.use("/api/consignment/partners", consignmentPartnersRouter);
   app.use("/api/consignment/categories", consignmentCategoriesRouter);
   app.use("/api/consignment/categories", consignmentCategoryProductsRouter);
+  app.use('/api/deliveries/consignment', consignmentDeliveriesRoutes);
 
   // Others
   app.use("/api/purchases", purchasesRouter);

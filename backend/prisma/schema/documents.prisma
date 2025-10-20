@@ -1,76 +1,89 @@
-// prisma/schema/documents.prisma
+/// ======================================
+/// Documents (Delivery / Consignment)
+/// ต้องมี enums ใน enums.prisma:
+/// - DocKind, DocType(DELIVERY_BRANCH/DELIVERY_CONSIGNMENT),
+/// - DocStatus, PartyKind(BRANCH/CONSIGNMENT/HEADQUARTERS)
+/// ======================================
 
 model Document {
-  id     Int       @id @default(autoincrement())
-  kind   DocKind
-  status DocStatus @default(DRAFT)
+  id              Int        @id @default(autoincrement())
 
-  issuerKind    PartyKind
-  issuerId      Int
-  recipientKind PartyKind
-  recipientId   Int
+  // ประเภทหลัก + ชนิดย่อย
+  kind            DocKind
+  docType         DocType     @default(DELIVERY_BRANCH)
 
-  docNo   String?  @unique
-  docDate DateTime @default(now())
+  status          DocStatus
+  docNo           String      @unique
+  docDate         DateTime    @default(now())
 
-  branchId Int?
-  branch   Branch? @relation(fields: [branchId], references: [id])
+  // ฝ่ายคู่สัญญา (ต้นทาง/ปลายทาง)
+  issuerKind      PartyKind
+  issuerId        Int
+  recipientKind   PartyKind
+  recipientId     Int
 
-  partnerId Int?
-  partner   ConsignmentPartner? @relation(fields: [partnerId], references: [id])
+  // Snapshot ชื่อคู่สัญญา (กันชื่อเปลี่ยนย้อนหลัง และรองรับ HQ alias)
+  issuerName      String?
+  recipientName   String?
 
-  createdById Int?
-  createdBy   User? @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  // ยอดเงินรวม
+  total           Decimal     @db.Decimal(18, 2)
 
-  total Decimal @default(0) @db.Decimal(12, 2)
+  note            String?
 
-  items    DocumentItem[]
-  payments DocumentPayment[]
+  // ความสัมพันธ์
+  items           DocumentItem[]
+  payments        DocumentPayment[]
 
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  DocumentQuickItem DocumentQuickItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  @@index([kind, status])
-  @@index([docDate])
-  @@index([branchId])
-  @@index([partnerId])
+  // ดัชนีที่ใช้ค้นบ่อย
+  @@index([kind, docType, docDate])
+  @@index([issuerKind, issuerId])
+  @@index([recipientKind, recipientId])
+  @@index([docNo])
 }
 
 model DocumentItem {
-  id         Int @id @default(autoincrement())
-  documentId Int
-  productId  Int
+  id          Int      @id @default(autoincrement())
+  documentId  Int
+  productId   Int
 
-  qty    Decimal @db.Decimal(12, 2)
-  price  Decimal @db.Decimal(12, 2)
-  amount Decimal @db.Decimal(12, 2)
+  qty         Decimal  @db.Decimal(18, 4)
+  price       Decimal  @db.Decimal(18, 4)
+  amount      Decimal  @db.Decimal(18, 2)
 
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  // รองรับโหมด CATEGORY ของ consignment
+  categoryId  Int?
+  displayName String?   // ชื่อที่แสดงบนใบ (override ได้ เช่นชื่อจากหมวดของ partner)
+  category    ConsignmentCategory? @relation(fields: [categoryId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // ความสัมพันธ์เดิม
+  document    Document @relation(fields: [documentId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
 
   @@index([documentId])
   @@index([productId])
+  @@index([categoryId])
 }
 
 model DocumentPayment {
-  id         Int         @id @default(autoincrement())
-  documentId Int
-  kind       PaymentKind
-  amount     Decimal     @db.Decimal(14, 2)
+  id            Int       @id @default(autoincrement())
+  documentId    Int
+  amount        Decimal    @db.Decimal(18, 2)
+  paidAt        DateTime   @default(now())
 
-  branchBankAccountId  Int?
-  partnerBankAccountId Int?
+  // Snapshot ช่องทางชำระเงิน (กันข้อมูลเปลี่ยน)
+  channelType   String?
+  bankAccountId Int?
+  refNo         String?
+  channelLabelSnapshot  String?
+  accountNameSnapshot   String?
+  accountNoSnapshot     String?
 
-  // snapshot กันการเปลี่ยนแปลงภายหลัง
-  bankNameSnapshot    String?
-  accountNoSnapshot   String?
-  accountNameSnapshot String?
-
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document      Document  @relation(fields: [documentId], references: [id])
 
   @@index([documentId])
+  @@index([paidAt])
 }

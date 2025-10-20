@@ -23,6 +23,7 @@ model ConsignmentPartner {
   documents    Document[]
   users        User[]
   bankAccounts PartnerBankAccount[]
+  aliases HeadquartersAlias[]
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -46,8 +47,9 @@ model ConsignmentCategory {
   // ใส่ชื่อ relation ให้ตรงกับคู่ใน ConsignmentCategoryMap
   maps ConsignmentCategoryMap[] @relation("CategoryMaps")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  DocumentItem DocumentItem[]
 
   /// ไม่ให้ code ซ้ำในร้านเดียวกัน
   @@unique([partnerId, code])

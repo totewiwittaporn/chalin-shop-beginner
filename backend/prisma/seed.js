@@ -1,146 +1,140 @@
+// backend/prisma/seed.js
 import { PrismaClient } from "@prisma/client";
-import 'dotenv/config'
+import bcrypt from "bcrypt";
+
 const prisma = new PrismaClient();
 
 async function main() {
-  // Branch
-  const mainBranch = await prisma.branch.upsert({
-    where: { code: "MAIN" },
-    update: {},
-    create: { code: "MAIN", name: "สาขาหลัก" },
-  });
+  console.log("🌱 Seeding...");
 
   // Users
+  const adminEmail = "admin@chalin.local";
+  const adminPass = "123456";
   const admin = await prisma.user.upsert({
-    where: { email: "admin@chalin.local" },
+    where: { email: adminEmail },
     update: {},
     create: {
-      email: "admin@chalin.local",
-      password: "admin123", // NOTE: dev only
+      email: adminEmail,
+      name: "ผู้ดูแลระบบ",
       role: "ADMIN",
-      branchId: mainBranch.id,
-      name: "Admin",
+      passwordHash: await bcrypt.hash(adminPass, 10),
     },
   });
+  console.log("👑 Admin:", admin.email, "/", adminPass);
 
-  // Product Types
-  const hairType = await prisma.productType.upsert({
-    where: { name: "กิ๊บผม" },
-    update: {},
-    create: { name: "กิ๊บผม" },
-  });
-
-  // Products
-  const p1 = await prisma.product.upsert({
-    where: { barcode: "GB-STAR" },
+  const consignEmail = "consign@shop.local";
+  const consignPass = "123456";
+  await prisma.user.upsert({
+    where: { email: consignEmail },
     update: {},
     create: {
-      barcode: "GB-STAR",
-      name: "กิ๊บรูปดาว",
-      productTypeId: hairType.id,
-      costPrice: 10.00,
-      salePrice: 25.00,
-      branchId: mainBranch.id,
+      email: consignEmail,
+      name: "ร้านฝากขายทดสอบ",
+      role: "CONSIGNMENT",
+      passwordHash: await bcrypt.hash(consignPass, 10),
     },
   });
-  const p2 = await prisma.product.upsert({
-    where: { barcode: "GB-SEA" },
+  console.log("🏪 Consignment:", consignEmail, "/", consignPass);
+
+  // Branch (stock owner)
+  const stockBranch = await prisma.branch.upsert({
+    where: { code: "MAIN-STOCK" },
+    update: {},
+    create: { code: "MAIN-STOCK", name: "คลังหลัก (stock owner)", isActive: true },
+  });
+  console.log("🏬 Stock Branch:", stockBranch.code);
+
+  // Headquarters
+  const hq = await prisma.headquarters.upsert({
+    where: { code: "HQ" },
+    update: { stockBranchId: stockBranch.id },
+    create: { code: "HQ", name: "สาขาหลัก (ชื่อจริงในระบบ)", stockBranchId: stockBranch.id },
+  });
+  console.log("🏢 HQ:", hq.code);
+
+  // Consignment Partners
+  const partnerA = await prisma.consignmentPartner.upsert({
+    where: { code: "A" },
+    update: {},
+    create: { code: "A", name: "ร้านฝากขาย A" },
+  });
+  const partnerB = await prisma.consignmentPartner.upsert({
+    where: { code: "B" },
+    update: {},
+    create: { code: "B", name: "ร้านฝากขาย B" },
+  });
+  console.log("🤝 Partners:", partnerA.code, partnerB.code);
+
+  // HQ Alias per Partner
+  await prisma.headquartersAlias.upsert({
+    where: { partnerId_headquartersId: { partnerId: partnerA.id, headquartersId: hq.id } },
+    update: { displayName: "Chalin Clothes" },
+    create: { partnerId: partnerA.id, headquartersId: hq.id, displayName: "Chalin Clothes" },
+  });
+  await prisma.headquartersAlias.upsert({
+    where: { partnerId_headquartersId: { partnerId: partnerB.id, headquartersId: hq.id } },
+    update: { displayName: "สุกัญญา" },
+    create: { partnerId: partnerB.id, headquartersId: hq.id, displayName: "สุกัญญา" },
+  });
+  console.log("🏷  HQ Aliases: OK");
+
+  // Product type + products
+  const type = await prisma.productType.upsert({
+    where: { name: "เครื่องประดับ" },
+    update: {},
+    create: { name: "เครื่องประดับ" },
+  });
+  await prisma.product.upsert({
+    where: { sku: "GB-SILVER" },
+    update: {},
+    create: { sku: "GB-SILVER", name: "กิ๊บเงิน", basePrice: 20, salePrice: 25, typeId: type.id },
+  });
+  await prisma.product.upsert({
+    where: { sku: "GB-GOLD" },
+    update: {},
+    create: { sku: "GB-GOLD", name: "กิ๊บทอง", basePrice: 25, salePrice: 30, typeId: type.id },
+  });
+  console.log("🧾 Products: OK");
+
+  // Payment Channels for HQ
+  await prisma.bankAccount.upsert({
+    where: { id: 1 }, // ใช้ where ที่เหมาะสมในระบบคุณ (เช่น unique composite)
     update: {},
     create: {
-      barcode: "GB-SEA",
-      name: "กิ๊บทะเล",
-      productTypeId: hairType.id,
-      costPrice: 12.50,
-      salePrice: 29.00,
-      branchId: mainBranch.id,
+      ownerKind: "HEADQUARTERS",
+      ownerId: hq.id,
+      channelType: "BANK",
+      bankCode: "KBANK",
+      accountNo: "123-4-56789-0",
+      accountName: "บริษัท ชาลิน จำกัด",
+      preferred: true,
+      isActive: true,
+      displayName: "บัญชี KBANK (หลัก)",
     },
   });
-
-  // Consignment Partner
-  const partner = await prisma.consignmentPartner.upsert({
-    where: { code: "GVT" },
+  await prisma.bankAccount.upsert({
+    where: { id: 2 },
     update: {},
     create: {
-      code: "GVT",
-      name: "Greenview Tour Shop",
-      commissionRate: 10.0,
-      status: "ACTIVE",
-      branchId: mainBranch.id,
+      ownerKind: "HEADQUARTERS",
+      ownerId: hq.id,
+      channelType: "PROMPTPAY",
+      promptpayId: "0800000000",
+      preferred: false,
+      isActive: true,
+      displayName: "PromptPay - HQ",
     },
   });
+  console.log("💳 Payment Channels (HQ): OK");
 
-  // Consignment Category (single price)
-  const cat = await prisma.consignmentCategory.upsert({
-    where: { partnerId_code: { partnerId: partner.id, code: "GB25" } },
-    update: {},
-    create: {
-      partnerId: partner.id,
-      code: "GB25",
-      name: "กิ๊บเล็ก ราคาเดียว",
-      price: 25.00,
-    },
-  });
-
-  // Map products to category
-  await prisma.consignmentCategoryMap.upsert({
-    where: { partnerId_productId: { partnerId: partner.id, productId: p1.id } },
-    update: { categoryId: cat.id },
-    create: { partnerId: partner.id, categoryId: cat.id, productId: p1.id },
-  });
-  await prisma.consignmentCategoryMap.upsert({
-    where: { partnerId_productId: { partnerId: partner.id, productId: p2.id } },
-    update: { categoryId: cat.id },
-    create: { partnerId: partner.id, categoryId: cat.id, productId: p2.id },
-  });
-
-  // Inventory
-  await prisma.consignmentInventory.upsert({
-    where: { partnerId_productId: { partnerId: partner.id, productId: p1.id } },
-    update: { qtyOnHand: 50 },
-    create: { partnerId: partner.id, productId: p1.id, qtyOnHand: 50, price: 25.00 },
-  });
-  await prisma.consignmentInventory.upsert({
-    where: { partnerId_productId: { partnerId: partner.id, productId: p2.id } },
-    update: { qtyOnHand: 60 },
-    create: { partnerId: partner.id, productId: p2.id, qtyOnHand: 60, price: 25.00 },
-  });
-
-  // Example CONSALE document
-  const doc = await prisma.document.create({
-    data: {
-      kind: "CONSALE",
-      status: "ISSUED",
-      code: "CON-20251011-0001",
-      issueDate: new Date(),
-      branchId: mainBranch.id,
-      createdById: admin.id,
-      partnerId: partner.id,
-      commissionRate: 10.0,
-      subTotal: 50.00,
-      discount: 0,
-      tax: 0,
-      total: 50.00,
-      items: {
-        create: [
-          {
-            name: "กิ๊บรูปดาว",
-            barcode: "GB-STAR",
-            displayName: "กิ๊บเล็กราคาเดียว",
-            displayCode: "GB25",
-            qty: 2,
-            unitPrice: 25.00,
-            total: 50.00,
-            productId: p1.id,
-            categoryId: cat.id,
-          },
-        ],
-      },
-    },
-  });
-
-  console.log("Seed completed:", { mainBranch, admin, pCount: 2, partner: partner.code, doc: doc.code });
+  console.log("✅ Seeding complete.");
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error("❌ Seed error:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

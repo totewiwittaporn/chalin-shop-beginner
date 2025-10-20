@@ -1,7 +1,7 @@
 // backend/src/routes/print.routes.js
 import { Router } from "express";
 import { requireAuth, requireRole } from "#app/middleware/auth.js";
-import { printDelivery } from "#app/controllers/deliveries/deliveriesController.js";
+import { printDelivery } from "#app/controllers/deliveries/branchDeliveries.controller.js";
 
 // (ออปชันเสริม) ยังเก็บ endpoint เดิมไว้เป็น alias PDF ตรง ๆ ก็ได้
 import { renderDeliveryNoteA4PDF } from "#app/print/printService.js";

@@ -11,7 +11,6 @@ model Branch {
   // ✅ เพิ่มใหม่
   phone  String? // เบอร์โทร
   taxId  String? // เลขผู้เสียภาษี
-  isMain Boolean @default(false) // เป็นสาขาหลักหรือไม่
 
   // มีอยู่แล้วก็ใช้ต่อได้ ถ้ายังไม่มี ให้เพิ่ม
   commissionRate Float? // ค่าคอมมิชชัน (%), เว้นว่างได้
