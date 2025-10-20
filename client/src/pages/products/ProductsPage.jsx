@@ -157,60 +157,62 @@ export default function ProductsPage() {
                   พบทั้งหมด {count.toLocaleString()} รายการ
                 </div>
 
-                <Table>
-                  <Table.Head>
-                    <Table.Tr>
-                      <Table.Th className="w-[160px]">Barcode</Table.Th>
-                      <Table.Th>ชื่อสินค้า</Table.Th>
-                      <Table.Th className="w-[200px]">หมวดหมู่สินค้า</Table.Th>{' '}
-                      {/* เพิ่มคอลัมน์หมวด */}
-                      <Table.Th className="w-[150px] text-right">ราคาซื้อ</Table.Th>
-                      <Table.Th className="w-[150px] text-right">ราคาขาย</Table.Th>
-                      <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
-                    </Table.Tr>
-                  </Table.Head>
-
-                  <Table.Body loading={loading}>
-                    {list.map((p) => (
-                      <Table.Tr key={p.id}>
-                        <Table.Td className="font-mono text-sm">
-                          <BarcodeImage value={p.barcode} />
-                        </Table.Td>
-                        <Table.Td>{p.name}</Table.Td>
-                        <Table.Td>
-                          {!typesLoaded ? '...' : typeMap[String(p.productTypeId)] || '-'}
-                        </Table.Td>
-                        <Table.Td className="text-right">{formatMoney(p.costPrice)}</Table.Td>
-                        <Table.Td className="text-right">{formatMoney(p.salePrice)}</Table.Td>
-                        <Table.Td className="text-right">
-                          <div className="inline-flex items-center gap-2">
-                            {/* คงเหลือปุ่มเดียว: แก้ไข (สีเหลืองส้ม) */}
-                            <Button
-                              size="sm"
-                              leftIcon={<Pencil size={16} />}
-                              kind="editor"
-                              onClick={() => {
-                                setEditingProduct(p);
-                                setOpenEdit(true);
-                              }}
-                              title="แก้ไขสินค้า"
-                            >
-                              แก้ไข
-                            </Button>
-                          </div>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-
-                    {!loading && list.length === 0 && (
+                <div className="rounded-2xl overflow-hidden">
+                  <Table.Root>
+                    <Table.Head>
                       <Table.Tr>
-                        <Table.Td colSpan={6} className="text-center text-muted py-10">
-                          ไม่พบข้อมูลสินค้า
-                        </Table.Td>
+                        <Table.Th className="w-[160px]">Barcode</Table.Th>
+                        <Table.Th>ชื่อสินค้า</Table.Th>
+                        <Table.Th className="w-[200px]">หมวดหมู่สินค้า</Table.Th>{' '}
+                        {/* เพิ่มคอลัมน์หมวด */}
+                        <Table.Th className="w-[150px] text-right">ราคาซื้อ</Table.Th>
+                        <Table.Th className="w-[150px] text-right">ราคาขาย</Table.Th>
+                        <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
                       </Table.Tr>
-                    )}
-                  </Table.Body>
-                </Table>
+                    </Table.Head>
+
+                    <Table.Body loading={loading}>
+                      {list.map((p) => (
+                        <Table.Tr key={p.id}>
+                          <Table.Td className="font-mono text-sm">
+                            <BarcodeImage value={p.barcode} />
+                          </Table.Td>
+                          <Table.Td>{p.name}</Table.Td>
+                          <Table.Td>
+                            {!typesLoaded ? '...' : typeMap[String(p.productTypeId)] || '-'}
+                          </Table.Td>
+                          <Table.Td className="text-right">{formatMoney(p.costPrice)}</Table.Td>
+                          <Table.Td className="text-right">{formatMoney(p.salePrice)}</Table.Td>
+                          <Table.Td className="text-right">
+                            <div className="inline-flex items-center gap-2">
+                              {/* คงเหลือปุ่มเดียว: แก้ไข (สีเหลืองส้ม) */}
+                              <Button
+                                size="sm"
+                                leftIcon={<Pencil size={16} />}
+                                kind="editor"
+                                onClick={() => {
+                                  setEditingProduct(p);
+                                  setOpenEdit(true);
+                                }}
+                                title="แก้ไขสินค้า"
+                              >
+                                แก้ไข
+                              </Button>
+                            </div>
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+
+                      {!loading && list.length === 0 && (
+                        <Table.Tr>
+                          <Table.Td colSpan={6} className="text-center text-muted py-10">
+                            ไม่พบข้อมูลสินค้า
+                          </Table.Td>
+                        </Table.Tr>
+                      )}
+                    </Table.Body>
+                  </Table.Root>
+                </div>
 
                 {/* Pagination */}
                 <div className="mt-3 flex items-center justify-between">

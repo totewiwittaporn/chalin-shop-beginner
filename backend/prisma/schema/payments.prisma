@@ -16,29 +16,29 @@ enum OwnerKind {
 }
 
 model BankAccount {
-  id            Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  ownerKind     OwnerKind
-  ownerId       Int                 // อ้างถึง HQ/Branch/Partner ตาม ownerKind
+  ownerKind OwnerKind
+  ownerId   Int // อ้างถึง HQ/Branch/Partner ตาม ownerKind
 
-  channelType   PaymentChannelType
+  channelType PaymentChannelType
 
-  bankCode      String?             // เช่น KBANK, SCB (ถ้าเป็น BANK)
-  accountNo     String?
-  accountName   String?
+  bankCode    String? // เช่น KBANK, SCB (ถ้าเป็น BANK)
+  accountNo   String?
+  accountName String?
 
-  promptpayId   String?             // ถ้าเป็น PROMPTPAY
+  promptpayId String? // ถ้าเป็น PROMPTPAY
 
-  displayName   String?             // ชื่อโชว์บนเอกสาร (เช่น "บัญชีรับโอนหลัก")
-  preferred     Boolean  @default(false)
-  isActive      Boolean  @default(true)
+  displayName String? // ชื่อโชว์บนเอกสาร (เช่น "บัญชีรับโอนหลัก")
+  preferred   Boolean @default(false)
+  isActive    Boolean @default(true)
 
-  qrPayload     String?             // (ออปชัน) เก็บ payload พร้อมเพย์/คิวอาร์
-  feeRate       Decimal? @db.Decimal(9, 4)
-  remark        String?
+  qrPayload String? // (ออปชัน) เก็บ payload พร้อมเพย์/คิวอาร์
+  feeRate   Decimal? @db.Decimal(9, 4)
+  remark    String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ownerKind, ownerId])
   @@index([isActive, preferred])

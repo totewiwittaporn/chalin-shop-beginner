@@ -3,32 +3,36 @@
 /// ======================================
 
 model Headquarters {
-  id            Int      @id @default(autoincrement())
-  code          String   @unique          // เช่น "HQ" หรือ "MAIN"
-  name          String                   // ชื่อจริงของสาขาหลัก (ใช้ทางธุรกิจ)
-  isActive      Boolean  @default(true)
+  id       Int     @id @default(autoincrement())
+  code     String  @unique // เช่น "HQ" หรือ "MAIN"
+  name     String // ชื่อจริงของสาขาหลัก (ใช้ทางธุรกิจ)
+  isActive Boolean @default(true)
 
   // เจ้าของสต็อกจริง ใช้ Branch เดิมเป็นคลังกลาง
   stockBranchId Int?
-  stockBranch   Branch?  @relation(fields: [stockBranchId], references: [id])
+  stockBranch   Branch? @relation(fields: [stockBranchId], references: [id])
 
   // ความสัมพันธ์อื่น
-  aliases       HeadquartersAlias[]
+  aliases HeadquartersAlias[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  // ✅ เพิ่ม: ความสัมพันธ์กับเทมเพลต
+  docTemplates   DocTemplate[]
+  tableTemplates TableTemplate[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
 }
 
 model HeadquartersAlias {
-  id             Int   @id @default(autoincrement())
+  id             Int    @id @default(autoincrement())
   partnerId      Int
   headquartersId Int
-  displayName    String           // ชื่อ HQ ที่จะแสดงบนเอกสารสำหรับ partner รายนี้
+  displayName    String // ชื่อ HQ ที่จะแสดงบนเอกสารสำหรับ partner รายนี้
 
-  partner        ConsignmentPartner @relation(fields: [partnerId], references: [id])
-  headquarters   Headquarters       @relation(fields: [headquartersId], references: [id])
+  partner      ConsignmentPartner @relation(fields: [partnerId], references: [id])
+  headquarters Headquarters       @relation(fields: [headquartersId], references: [id])
 
   @@unique([partnerId, headquartersId])
 }

@@ -8,8 +8,8 @@ async function main() {
   console.log("🌱 Seeding...");
 
   // Users
-  const adminEmail = "admin@chalin.local";
-  const adminPass = "123456";
+  const adminEmail = "admin@chalinshop.com";
+  const adminPass = "Tg271260";
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
@@ -17,13 +17,14 @@ async function main() {
       email: adminEmail,
       name: "ผู้ดูแลระบบ",
       role: "ADMIN",
+      password: adminPass,
       passwordHash: await bcrypt.hash(adminPass, 10),
     },
   });
   console.log("👑 Admin:", admin.email, "/", adminPass);
 
-  const consignEmail = "consign@shop.local";
-  const consignPass = "123456";
+  const consignEmail = "totee.wiwittaporn@gmail.com";
+  const consignPass = "Tg271260";
   await prisma.user.upsert({
     where: { email: consignEmail },
     update: {},
@@ -31,6 +32,7 @@ async function main() {
       email: consignEmail,
       name: "ร้านฝากขายทดสอบ",
       role: "CONSIGNMENT",
+      password: await bcrypt.hash(adminPass, 10),
       passwordHash: await bcrypt.hash(consignPass, 10),
     },
   });
@@ -40,7 +42,11 @@ async function main() {
   const stockBranch = await prisma.branch.upsert({
     where: { code: "MAIN-STOCK" },
     update: {},
-    create: { code: "MAIN-STOCK", name: "คลังหลัก (stock owner)", isActive: true },
+    create: {
+      code: "MAIN-STOCK",
+      name: "คลังหลัก (stock owner)",
+      isActive: true,
+    },
   });
   console.log("🏬 Stock Branch:", stockBranch.code);
 
@@ -48,7 +54,11 @@ async function main() {
   const hq = await prisma.headquarters.upsert({
     where: { code: "HQ" },
     update: { stockBranchId: stockBranch.id },
-    create: { code: "HQ", name: "สาขาหลัก (ชื่อจริงในระบบ)", stockBranchId: stockBranch.id },
+    create: {
+      code: "HQ",
+      name: "สาขาหลัก (ชื่อจริงในระบบ)",
+      stockBranchId: stockBranch.id,
+    },
   });
   console.log("🏢 HQ:", hq.code);
 
@@ -67,14 +77,32 @@ async function main() {
 
   // HQ Alias per Partner
   await prisma.headquartersAlias.upsert({
-    where: { partnerId_headquartersId: { partnerId: partnerA.id, headquartersId: hq.id } },
+    where: {
+      partnerId_headquartersId: {
+        partnerId: partnerA.id,
+        headquartersId: hq.id,
+      },
+    },
     update: { displayName: "Chalin Clothes" },
-    create: { partnerId: partnerA.id, headquartersId: hq.id, displayName: "Chalin Clothes" },
+    create: {
+      partnerId: partnerA.id,
+      headquartersId: hq.id,
+      displayName: "Chalin Clothes",
+    },
   });
   await prisma.headquartersAlias.upsert({
-    where: { partnerId_headquartersId: { partnerId: partnerB.id, headquartersId: hq.id } },
+    where: {
+      partnerId_headquartersId: {
+        partnerId: partnerB.id,
+        headquartersId: hq.id,
+      },
+    },
     update: { displayName: "สุกัญญา" },
-    create: { partnerId: partnerB.id, headquartersId: hq.id, displayName: "สุกัญญา" },
+    create: {
+      partnerId: partnerB.id,
+      headquartersId: hq.id,
+      displayName: "สุกัญญา",
+    },
   });
   console.log("🏷  HQ Aliases: OK");
 
@@ -87,12 +115,24 @@ async function main() {
   await prisma.product.upsert({
     where: { sku: "GB-SILVER" },
     update: {},
-    create: { sku: "GB-SILVER", name: "กิ๊บเงิน", basePrice: 20, salePrice: 25, typeId: type.id },
+    create: {
+      sku: "GB-SILVER",
+      name: "กิ๊บเงิน",
+      basePrice: 20,
+      salePrice: 25,
+      typeId: type.id,
+    },
   });
   await prisma.product.upsert({
     where: { sku: "GB-GOLD" },
     update: {},
-    create: { sku: "GB-GOLD", name: "กิ๊บทอง", basePrice: 25, salePrice: 30, typeId: type.id },
+    create: {
+      sku: "GB-GOLD",
+      name: "กิ๊บทอง",
+      basePrice: 25,
+      salePrice: 30,
+      typeId: type.id,
+    },
   });
   console.log("🧾 Products: OK");
 

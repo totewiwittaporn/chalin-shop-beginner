@@ -55,10 +55,7 @@ export const MOBILE_GROUPS = (role = 'admin') => {
       id: 'settings',
       label: 'Settings',
       items: [
-        { to: '/settings', label: 'Main Settings' },
-        { to: '/settings/templates', label: 'Template Settings' },
-        { to: '/users', label: 'Users' },
-        { to: '/profile', label: 'Profile' },
+        { to: '/settings', label: 'Settings' },
       ],
     },
   ];

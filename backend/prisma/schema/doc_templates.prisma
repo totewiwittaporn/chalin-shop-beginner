@@ -1,0 +1,63 @@
+// prisma/schema/doc_templates.prisma
+/// ================================
+/// Document Templates (Header/Footer + Table)
+/// ================================
+/// ใช้ DocKind จาก enums.prisma เป็นตัวระบุชนิดเอกสารหลัก
+/// - QUOTE, INVOICE, RECEIPT, DELIVERY, CONSALE
+
+model DocTemplate {
+  id        Int      @id @default(autoincrement())
+  hqId      Int
+  name      String
+  /// ใช้ร่วมหลายชนิดเอกสาร (generic=true) หรือเฉพาะชนิด (กำหนด docKind)
+  generic   Boolean  @default(true)
+  docKind   DocKind?
+  isDefault Boolean  @default(false)
+
+  /// header/footer เก็บแบบ JSON เพื่อยืดหยุ่น: { companyName, tradeName, logoUrl, address1-3, phone, taxId, footerNote, bankName, bankAccountName, bankAccountNumber, ... }
+  header Json
+  footer Json
+
+  status String @default("ACTIVE")
+
+  headquarters         Headquarters           @relation(fields: [hqId], references: [id])
+  PartnerDocPreference PartnerDocPreference[]
+
+  @@index([hqId])
+  @@index([hqId, docKind])
+}
+
+model TableTemplate {
+  id        Int     @id @default(autoincrement())
+  hqId      Int
+  name      String
+  docKind   DocKind
+  isDefault Boolean @default(false)
+
+  /// โครงตาราง: { showIndex, columns:[{key,label,width|flex,align,wrap,format,sum,hidden,hiddenFor}], footer:{showSum,sumKeys}, ... }
+  columns Json
+  options Json?
+  status  String @default("ACTIVE")
+
+  headquarters         Headquarters           @relation(fields: [hqId], references: [id])
+  PartnerDocPreference PartnerDocPreference[]
+
+  @@index([hqId, docKind])
+}
+
+/// การกำหนดค่าของร้านฝากขาย ต่อชนิดเอกสาร (เลือกหัว/ท้าย + ตาราง)
+model PartnerDocPreference {
+  id               Int     @id @default(autoincrement())
+  partnerId        Int
+  docKind          DocKind
+  headerTemplateId Int?
+  tableTemplateId  Int?
+
+  partner        ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  headerTemplate DocTemplate?       @relation(fields: [headerTemplateId], references: [id])
+  tableTemplate  TableTemplate?     @relation(fields: [tableTemplateId], references: [id])
+
+  @@unique([partnerId, docKind]) // ร้านหนึ่ง กำหนดได้ 1 รายการต่อชนิดเอกสาร
+  @@index([headerTemplateId])
+  @@index([tableTemplateId])
+}

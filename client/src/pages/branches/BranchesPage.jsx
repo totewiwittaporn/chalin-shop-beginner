@@ -46,17 +46,16 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
   const [address3, setAddress3] = useState(initial.addressLine3 || "");
   const [phone, setPhone] = useState(initial.phone || "");
   const [taxId, setTaxId] = useState(initial.taxId || "");
-  const [isMain, setIsMain] = useState(!!initial.isMain);
   const [commission, setCommission] = useState(
     typeof initial.commissionRate === "number" ? String(initial.commissionRate) : ""
   );
 
   const normalizedCode = (code || "").toUpperCase().replace(/\s+/g, "-");
-  // ผ่อนเงื่อนไข: บังคับแค่ code + name
+  // บังคับแค่ code + name
   const canSave = normalizedCode.trim() && name.trim();
 
   const handleSave = () => {
-    // สร้าง payload แบบ “ส่งเฉพาะคีย์ที่มีค่า” เพื่อลดการชน schema
+    // ส่งเฉพาะคีย์ที่มีค่า เพื่อลดการชน schema ฝั่ง backend
     const payload = {};
     const put = (k, v) => {
       if (v !== "" && v !== undefined && v !== null) payload[k] = v;
@@ -64,16 +63,14 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
 
     put("code", normalizedCode);
     put("name", name.trim());
-    put("address", address.trim() || null);        // backend map → addressLine1
-    put("addressLine2", address2.trim() || null);  // ถ้า schema มี จะอัปเดต
-    put("addressLine3", address3.trim() || null);  // ถ้า schema มี จะอัปเดต
-    put("phone", phone.trim() || null);            // ถ้า schema มี
-    put("taxId", taxId.trim() || null);            // ถ้า schema มี
-    // isMain ให้ส่งเสมอเป็น boolean ถ้า backend รองรับ; ถ้าไม่รองรับจะถูกละไว้ ไม่กระทบ
-    payload.isMain = !!isMain;
-    // commissionRate เป็นออปชัน
+    put("address", (address || "").trim() || null);        // backend map → addressLine1
+    put("addressLine2", (address2 || "").trim() || null);
+    put("addressLine3", (address3 || "").trim() || null);
+    put("phone", (phone || "").trim() || null);
+    put("taxId", (taxId || "").trim() || null);
     if (commission !== "") payload.commissionRate = Number(commission);
 
+    // ❌ เอา isMain ออกแล้ว — ไม่ผูกแนวคิด MAIN กับ Branch อีกต่อไป
     onSave?.(payload);
   };
 
@@ -93,29 +90,18 @@ function BranchDialog({ mode = "create", initial = {}, onClose, onSave, busy }) 
       }
     >
       <div className="grid gap-4">
-        {/* รหัส + ตั้งเป็น MAIN */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className="block text-xs text-slate-600 mb-1">รหัสสาขา</label>
-            <input
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="เช่น MAIN / BR-GVT"
-            />
-            <div className="text-xs text-slate-500 mt-1">
-              จะถูกบันทึกเป็น: <b>{normalizedCode || "-"}</b>
-            </div>
+        {/* รหัสสาขา (เต็มบรรทัด) */}
+        <div>
+          <label className="block text-xs text-slate-600 mb-1">รหัสสาขา</label>
+          <input
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none text-slate-900 placeholder-slate-500 focus:border-slate-400 focus:ring-2 focus:ring-primary/30"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="เช่น MAIN / BR-GVT"
+          />
+          <div className="text-xs text-slate-500 mt-1">
+            จะถูกบันทึกเป็น: <b>{normalizedCode || "-"}</b>
           </div>
-          <label className="flex items-end gap-2">
-            <input
-              type="checkbox"
-              className="scale-110 accent-blue-500 mt-6"
-              checked={isMain}
-              onChange={(e) => setIsMain(e.target.checked)}
-            />
-            <span className="text-sm text-slate-700">ตั้งเป็น MAIN</span>
-          </label>
         </div>
 
         {/* ชื่อสาขา */}
@@ -389,7 +375,7 @@ export default function BranchesPage() {
           onSave={(payload) => {
             setSaving(true);
             updateBranch(editing.id, payload)
-              .then((updated) => setRows((prev) => prev.map((x) => (x.id === editing.id ? updated : x))))
+              .then((updated) => setRows((prev) => prev.map((x) => (x.id === editing.id ? updated : x))) )
               .catch((e) => alert(e?.response?.data?.error || "แก้ไขสาขาไม่สำเร็จ"))
               .finally(() => setSaving(false));
           }}

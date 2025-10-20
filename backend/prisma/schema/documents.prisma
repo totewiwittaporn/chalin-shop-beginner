@@ -6,37 +6,44 @@
 /// ======================================
 
 model Document {
-  id              Int        @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   // ประเภทหลัก + ชนิดย่อย
-  kind            DocKind
-  docType         DocType     @default(DELIVERY_BRANCH)
+  kind    DocKind
+  docType DocType @default(DELIVERY_BRANCH)
 
-  status          DocStatus
-  docNo           String      @unique
-  docDate         DateTime    @default(now())
+  status  DocStatus
+  docNo   String    @unique
+  docDate DateTime  @default(now())
 
   // ฝ่ายคู่สัญญา (ต้นทาง/ปลายทาง)
-  issuerKind      PartyKind
-  issuerId        Int
-  recipientKind   PartyKind
-  recipientId     Int
+  issuerKind    PartyKind
+  issuerId      Int
+  recipientKind PartyKind
+  recipientId   Int
 
   // Snapshot ชื่อคู่สัญญา (กันชื่อเปลี่ยนย้อนหลัง และรองรับ HQ alias)
-  issuerName      String?
-  recipientName   String?
+  issuerName    String?
+  recipientName String?
 
   // ยอดเงินรวม
-  total           Decimal     @db.Decimal(18, 2)
+  total Decimal @db.Decimal(18, 2)
 
-  note            String?
+  note String?
 
   // ความสัมพันธ์
-  items           DocumentItem[]
-  payments        DocumentPayment[]
+  items    DocumentItem[]
+  payments DocumentPayment[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  createdBy            User?               @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  createdById          Int?                @map("userId") // ใช้คอลัมน์เดิมชื่อ userId ในฐานข้อมูล
+  Branch               Branch?             @relation(fields: [branchId], references: [id])
+  branchId             Int?
+  ConsignmentPartner   ConsignmentPartner? @relation(fields: [consignmentPartnerId], references: [id])
+  consignmentPartnerId Int?
+  DocumentQuickItem    DocumentQuickItem[]
 
   // ดัชนีที่ใช้ค้นบ่อย
   @@index([kind, docType, docDate])
@@ -46,22 +53,22 @@ model Document {
 }
 
 model DocumentItem {
-  id          Int      @id @default(autoincrement())
-  documentId  Int
-  productId   Int
+  id         Int @id @default(autoincrement())
+  documentId Int
+  productId  Int
 
-  qty         Decimal  @db.Decimal(18, 4)
-  price       Decimal  @db.Decimal(18, 4)
-  amount      Decimal  @db.Decimal(18, 2)
+  qty    Decimal @db.Decimal(18, 4)
+  price  Decimal @db.Decimal(18, 4)
+  amount Decimal @db.Decimal(18, 2)
 
   // รองรับโหมด CATEGORY ของ consignment
   categoryId  Int?
-  displayName String?   // ชื่อที่แสดงบนใบ (override ได้ เช่นชื่อจากหมวดของ partner)
+  displayName String? // ชื่อที่แสดงบนใบ (override ได้ เช่นชื่อจากหมวดของ partner)
   category    ConsignmentCategory? @relation(fields: [categoryId], references: [id])
 
   // ความสัมพันธ์เดิม
-  document    Document @relation(fields: [documentId], references: [id])
-  product     Product  @relation(fields: [productId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
 
   @@index([documentId])
   @@index([productId])
@@ -69,20 +76,20 @@ model DocumentItem {
 }
 
 model DocumentPayment {
-  id            Int       @id @default(autoincrement())
-  documentId    Int
-  amount        Decimal    @db.Decimal(18, 2)
-  paidAt        DateTime   @default(now())
+  id         Int      @id @default(autoincrement())
+  documentId Int
+  amount     Decimal  @db.Decimal(18, 2)
+  paidAt     DateTime @default(now())
 
   // Snapshot ช่องทางชำระเงิน (กันข้อมูลเปลี่ยน)
-  channelType   String?
-  bankAccountId Int?
-  refNo         String?
-  channelLabelSnapshot  String?
-  accountNameSnapshot   String?
-  accountNoSnapshot     String?
+  channelType          String?
+  bankAccountId        Int?
+  refNo                String?
+  channelLabelSnapshot String?
+  accountNameSnapshot  String?
+  accountNoSnapshot    String?
 
-  document      Document  @relation(fields: [documentId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
 
   @@index([documentId])
   @@index([paidAt])

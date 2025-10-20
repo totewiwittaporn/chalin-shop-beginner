@@ -10,12 +10,13 @@ import productTypesRoutes from "#app/routes/products/productTypes.routes.js";
 import branchesRoutes from "#app/routes/branches/branches.routes.js";
 import usersRoutes from "#app/routes/users/users.routes.js";
 import salesBranchRoutes from "#app/routes/sales/branch/sales.routes.js";
+import salesDashboardRoutes from "#app/routes/sales/dashboard.routes.js";
 
 // Consignment
 import consignmentPartnersRouter from "#app/routes/consignment/consignment.partners.routes.js";
 import consignmentCategoriesRouter from "#app/routes/consignment/consignment.categories.routes.js";
 import consignmentCategoryProductsRouter from "#app/routes/consignment/consignment.categoryProducts.routes.js";
-import consignmentDeliveriesRoutes from '#app/routes/deliveries/consignmentDeliveries.routes.js';
+import consignmentDeliveriesRoutes from "#app/routes/deliveries/consignmentDeliveries.routes.js";
 
 // Others
 import purchasesRouter from "#app/routes/purchases/purchases.routes.js";
@@ -26,8 +27,15 @@ import bankAccountsRoutes from "#app/routes/bank/bank-accounts.routes.js";
 import deliveriesRoutes from "#app/routes/deliveries/branchDeliveries.routes.js";
 import printRoutes from "#app/routes/print.routes.js";
 
-// ✅ แก้ให้ชี้ไฟล์ใหม่ที่ถูกต้อง
-import salesRoutes from "#app/routes/sales/sales.routes.js";
+// Headquarters (core)
+import headquartersRouter from "#app/routes/headquarter/headquarters.routes.js";
+
+// ✅ NEW: Templates & Partner Prefs (แก้ path ให้ตรงกับโฟลเดอร์จริง)
+import hqTableTplRouter from "#app/routes/headquarter/headquarters.tableTemplates.routes.js";
+import hqDocTplRouter from "#app/routes/headquarter/headquarters.docTemplates.routes.js";
+import partnerDocPrefsRouter from "#app/routes/docs/partners.docPrefs.routes.js";
+
+// ----------------------------------------
 
 export function mountPublicRoutes(app) {
   app.use("/api/auth", authRoutes);
@@ -35,6 +43,7 @@ export function mountPublicRoutes(app) {
 }
 
 export function mountProtectedRoutes(app) {
+  // Core
   app.use("/api/products", productsRoutes);
   app.use("/api/product-types", productTypesRoutes);
   app.use("/api/users", usersRoutes);
@@ -42,12 +51,13 @@ export function mountProtectedRoutes(app) {
 
   // POS (สาขา)
   app.use("/api/sales/branch", salesBranchRoutes);
+  app.use("/api/sales", salesDashboardRoutes);
 
   // Consignment
   app.use("/api/consignment/partners", consignmentPartnersRouter);
   app.use("/api/consignment/categories", consignmentCategoriesRouter);
-  app.use("/api/consignment/categories", consignmentCategoryProductsRouter);
-  app.use('/api/deliveries/consignment', consignmentDeliveriesRoutes);
+  app.use("/api/consignment/categories", consignmentCategoryProductsRouter); // (เดิมของคุณ)
+  app.use("/api/deliveries/consignment", consignmentDeliveriesRoutes);
 
   // Others
   app.use("/api/purchases", purchasesRouter);
@@ -57,9 +67,15 @@ export function mountProtectedRoutes(app) {
   app.use("/api", bankAccountsRoutes);
   app.use("/api/deliveries", deliveriesRoutes);
 
-  // 📄 Print PDF (คงไว้ที่นี่ที่เดียว)
-  app.use("/api/print", printRoutes);
+  // Headquarters base + templates
+  app.use("/api/headquarters", headquartersRouter);
+  app.use("/api/headquarters", hqTableTplRouter);
+  app.use("/api/headquarters", hqDocTplRouter);
 
-  // Sales summary / top-products / staff-summary
-  app.use("/api/sales", salesRoutes);
+  // Consignment Partner → document preferences
+  // ภายในไฟล์จะมี path ย่อยแบบ "/:partnerId/doc-prefs"
+  app.use("/api/consignment/partners", partnerDocPrefsRouter);
+
+  // Print PDF
+  app.use("/api/print", printRoutes);
 }

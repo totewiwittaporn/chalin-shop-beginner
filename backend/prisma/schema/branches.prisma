@@ -9,8 +9,8 @@ model Branch {
   addressLine3 String?
 
   // ✅ เพิ่มใหม่
-  phone  String? // เบอร์โทร
-  taxId  String? // เลขผู้เสียภาษี
+  phone String? // เบอร์โทร
+  taxId String? // เลขผู้เสียภาษี
 
   // มีอยู่แล้วก็ใช้ต่อได้ ถ้ายังไม่มี ให้เพิ่ม
   commissionRate Float? // ค่าคอมมิชชัน (%), เว้นว่างได้
@@ -34,6 +34,7 @@ model Branch {
   transfersFrom Transfer[] @relation("TransferFromBranch")
 
   // เอกสารโอนที่ “เข้ามา” สาขานี้
-  transfersTo Transfer[] @relation("TransferToBranch")
-  Sale        Sale[]
+  transfersTo  Transfer[]     @relation("TransferToBranch")
+  Sale         Sale[]
+  Headquarters Headquarters[]
 }

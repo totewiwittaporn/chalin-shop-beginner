@@ -23,7 +23,8 @@ model ConsignmentPartner {
   documents    Document[]
   users        User[]
   bankAccounts PartnerBankAccount[]
-  aliases HeadquartersAlias[]
+  aliases      HeadquartersAlias[]
+  preferences  PartnerDocPreference[]
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

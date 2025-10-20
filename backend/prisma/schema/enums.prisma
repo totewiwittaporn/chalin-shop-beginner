@@ -78,7 +78,7 @@ enum DocType {
 }
 
 enum PartyKind {
-  HEADQUARTERS   
+  HEADQUARTERS
   BRANCH
   CONSIGNMENT
   CUSTOMER

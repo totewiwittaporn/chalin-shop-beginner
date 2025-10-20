@@ -1,176 +1,187 @@
+// @/components/products/ProductTypesPanel.jsx
 import { useEffect, useMemo, useState } from "react";
-import Card from "@/components/ui/Card";
-import Table from "@/components/ui/Table";
+import GradientPanel from "@/components/theme/GradientPanel";
 import Button from "@/components/ui/Button";
-import { Search, Pencil, Plus } from "lucide-react";
+import Table from "@/components/ui/Table";
+import { Search, Plus, Pencil, CheckCircle2 } from "lucide-react";
+import ProductTypeModal from "./ProductTypeModal";
 import { listProductTypes, createProductType, updateProductType } from "@/services/productTypes.api";
-import ProductTypeModal from "@/components/products/ProductTypeModal";
-import { useAuthStore } from "@/store/authStore";
 
-/**
- * แผงตาราง “หมวดหมู่สินค้า” สำหรับใช้ในหน้า Products
- *
- * props:
- *  - onPick?: (type) => void   // เวลาเลือกหมวด (คลิกแถว) จะเรียกกลับให้ parent ใช้งาน เช่น กรองสินค้า
- */
+const debounce = (fn, ms = 350) => {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+};
+
 export default function ProductTypesPanel({ onPick }) {
-  const role = useAuthStore((s) => s.user?.role);
-  const isAdmin = String(role || "").toUpperCase() === "ADMIN";
-
-  const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // modal (รวมเพิ่ม/แก้ไข)
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("create"); // "create" | "edit"
+  const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize] = useState(50);
   const [total, setTotal] = useState(0);
 
-  async function fetchTypes({ search = q, pageNum = page } = {}) {
-    try {
-      setLoading(true);
-      const data = await listProductTypes({ search, page: pageNum, pageSize });
-      const items = data?.items ?? data ?? [];
-      setRows(items);
-      setTotal(data?.total ?? items.length);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const fetchTypes = useMemo(
+    () =>
+      debounce(async (params = {}) => {
+        setLoading(true);
+        try {
+          const res = await listProductTypes({
+            q: params.q ?? q,
+            page: params.page ?? page,
+            pageSize: params.pageSize ?? pageSize,
+          });
+          const items = res?.items ?? res ?? [];
+          setRows(Array.isArray(items) ? items : []);
+          setTotal(res?.pagination?.total ?? items.length ?? 0);
+        } catch (e) {
+          console.error("load product types fail", e);
+          setRows([]);
+          setTotal(0);
+        } finally {
+          setLoading(false);
+        }
+      }, 350),
+    [q, page, pageSize]
+  );
 
-  useEffect(() => {
-    fetchTypes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  useEffect(() => { fetchTypes({ q, page, pageSize }); }, [q, page, pageSize, fetchTypes]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter(r =>
+      (r.name || "").toLowerCase().includes(s) ||
+      (r.code || "").toLowerCase().includes(s) ||
+      (r.description || "").toLowerCase().includes(s)
+    );
+  }, [rows, q]);
 
   function openCreate() {
-    setMode("create");
     setEditing(null);
-    setOpen(true);
+    setModalOpen(true);
   }
-
   function openEdit(row) {
-    setMode("edit");
     setEditing(row);
-    setOpen(true);
+    setModalOpen(true);
   }
 
-  async function handleSubmit(...args) {
+  async function handleSubmit(payload) {
+    setSaving(true);
     try {
-      setBusy(true);
-      if (mode === "create") {
-        const payload = args[0]; // { name, code? }
-        await createProductType(payload);
+      if (editing?.id) {
+        const updated = await updateProductType(editing.id, payload);
+        setRows(prev => prev.map(x => (x.id === editing.id ? updated : x)));
       } else {
-        const [id, payload] = args; // (id, { name, code? })
-        await updateProductType(id, payload);
+        const created = await createProductType(payload);
+        setRows(prev => [created, ...prev]);
       }
-      setOpen(false);
-      await fetchTypes({ pageNum: 1 });
-      setPage(1);
-    } catch (e) {
-      alert(e?.response?.data?.error || "บันทึกหมวดไม่สำเร็จ");
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || "บันทึกไม่สำเร็จ");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   }
 
   return (
-    <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
-      <div className="flex items-center justify-between mb-3">
-        <div className="font-semibold">หมวดหมู่สินค้า</div>
-        {isAdmin && (
-          <Button kind="success" size="sm" leftIcon={<Plus size={16} />} onClick={openCreate}>
-            เพิ่มหมวด
-          </Button>
-        )}
-      </div>
-
-      <div className="rounded-2xl bg-white/95 p-3 text-slate-800">
-        {/* Search bar */}
-        <div className="flex items-center gap-2 mb-3">
-          <Search size={16} className="opacity-70" />
+    <GradientPanel
+      title="หมวดสินค้า"
+      subtitle="เลือกกรองอย่างไว + เพิ่ม/แก้ไขได้ทันที"
+      className="from-[#9db9ff] to-[#6f86ff]"
+      innerClassName="space-y-3"
+    >
+      {/* แถบค้นหา + ปุ่มเพิ่ม (โทนเดียวกับ supplier) */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+        <div className="flex items-center gap-2">
+          <Search size={16} className="text-white/90" />
           <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
-            placeholder="ค้นหาหมวด (ชื่อ/รหัส)"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (setPage(1), fetchTypes({ search: e.target.value, pageNum: 1 }))}
+            onKeyDown={(e) => e.key === "Enter" && fetchTypes({ q, page: 1 })}
+            className="w-full rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900 placeholder-slate-600"
+            placeholder="ค้นหา: ชื่อ/รหัส/คำอธิบาย"
           />
-          <Button kind="white" onClick={() => (setPage(1), fetchTypes({ search: q, pageNum: 1 }))}>ค้นหา</Button>
         </div>
+        <div className="flex items-center justify-end">
+          <Button kind="success" leftIcon={<Plus size={16} />} onClick={openCreate}>เพิ่มหมวด</Button>
+        </div>
+      </div>
 
-        {/* Table */}
+      {/* ตาราง — โครง/สไตล์ให้เหมือน SuppliersPage */}
+      <div className="rounded-2xl overflow-hidden">
         <Table.Root>
           <Table.Head>
             <Table.Tr>
-              <Table.Th className="w-[160px]">รหัส</Table.Th>
               <Table.Th>ชื่อหมวด</Table.Th>
-              <Table.Th className="w-[140px] text-right">เครื่องมือ</Table.Th>
+              <Table.Th className="hidden md:table-cell">รหัส</Table.Th>
+              <Table.Th className="hidden lg:table-cell">รายละเอียด</Table.Th>
+              <Table.Th className="w-[220px] text-right">เครื่องมือ</Table.Th>
             </Table.Tr>
           </Table.Head>
+
           <Table.Body loading={loading}>
-            {rows.map((r) => (
-              <Table.Tr key={r.id} className="cursor-pointer" onClick={() => onPick?.(r)}>
-                <Table.Td className="font-mono">{r.code || "-"}</Table.Td>
+            {filtered.map((r) => (
+              <Table.Tr key={r.id}>
                 <Table.Td>{r.name}</Table.Td>
+                <Table.Td className="hidden md:table-cell font-mono">{r.code}</Table.Td>
+                <Table.Td className="hidden lg:table-cell text-slate-600">{r.description || "-"}</Table.Td>
                 <Table.Td className="text-right">
-                  {isAdmin && (
-                    <Button
-                      kind="editor"
-                      size="sm"
-                      leftIcon={<Pencil size={14} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(r);
-                      }}
-                    >
+                  <div className="inline-flex gap-2">
+                    {/* ปุ่ม 'เลือก' (ถ้ามี onPick จาก ProductsPage) */}
+                    {onPick && (
+                      <Button
+                        size="sm"
+                        kind="white"
+                        leftIcon={<CheckCircle2 size={16} />}
+                        onClick={() => onPick(r)}
+                      >
+                        เลือก
+                      </Button>
+                    )}
+                    <Button size="sm" kind="white" leftIcon={<Pencil size={16} />} onClick={() => openEdit(r)}>
                       แก้ไข
                     </Button>
-                  )}
+                  </div>
                 </Table.Td>
               </Table.Tr>
             ))}
-            {!loading && rows.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={3} className="text-center text-slate-500 py-6">ไม่พบหมวดหมู่</Table.Td>
+                <Table.Td colSpan={4} className="text-center py-8 text-slate-500">
+                  ไม่พบหมวดสินค้า
+                </Table.Td>
               </Table.Tr>
             )}
           </Table.Body>
         </Table.Root>
+      </div>
 
-        {/* Pagination */}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="text-sm text-slate-600">หน้า {page} / {totalPages}</div>
-          <div className="flex items-center gap-2">
-            <Button kind="white" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              ก่อนหน้า
-            </Button>
-            <Button kind="white" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-              ถัดไป
-            </Button>
-          </div>
+      {/* (ออปชัน) footer/pagination เบา ๆ */}
+      <div className="flex items-center justify-between p-2 text-xs text-slate-600">
+        <span>ทั้งหมด {filtered.length} รายการ</span>
+        <div className="flex gap-2">
+          <Button kind="white" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>ก่อนหน้า</Button>
+          <Button kind="white" onClick={() => setPage((p) => p + 1)}>ถัดไป</Button>
         </div>
       </div>
 
-      {/* Modal: create/edit (ADMIN only) */}
-      {isAdmin && (
+      {/* Modal */}
+      {modalOpen && (
         <ProductTypeModal
-          open={open}
-          mode={mode}
-          initial={mode === "edit" ? editing : null}
-          onClose={() => setOpen(false)}
+          open
+          mode={editing ? "edit" : "create"}
+          initial={editing}
+          onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
-          busy={busy}
+          busy={saving}
         />
       )}
-    </Card>
+    </GradientPanel>
   );
 }

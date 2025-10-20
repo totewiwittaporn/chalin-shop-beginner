@@ -27,8 +27,11 @@ import ConsignmentPOS from '@/pages/pos/consignment/ConsignmentPOS';
 import BranchDelivery from '@/pages/delivery/branch/BranchDelivery';
 import ConsignmentDelivery from '@/pages/delivery/consignment/ConsignmentDelivery';
 
-// Docs
+// ==== Settings
 
+import SettingsPage from '@/pages/settings/SettingsPage.jsx';
+
+// Docs
 import DeliveryNoteA4Page from '@/pages/delivery/DeliveryNoteA4Page.jsx'; // ⬅️ เพิ่มบรรทัดนี้
 
 const BASENAME = import.meta.env.VITE_ROUTER_BASENAME || '/';
@@ -77,6 +80,8 @@ export default function App() {
             <Route element={<RequireAuth roles={['ADMIN', 'CONSIGNMENT']} />}>
               <Route path="/delivery/consignment" element={<ConsignmentDelivery />} />
             </Route>
+
+            <Route path="/settings" element={<SettingsPage />} />
 
             {/* Docs */}
           </Route>

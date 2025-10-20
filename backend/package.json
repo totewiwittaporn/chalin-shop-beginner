@@ -16,8 +16,12 @@
     "db:studio": "prisma studio --schema ./prisma/schema",
     "db:build": "node prisma/build-schema.js"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
