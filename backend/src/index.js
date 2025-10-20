@@ -8,7 +8,6 @@ import "dotenv/config";
 import { requireAuth } from "#app/middleware/auth.js";
 import { errorHandler } from "#app/middleware/error.js";
 import { mountPublicRoutes, mountProtectedRoutes } from "#app/routes/index.js";
-import printRoutes from "#app/routes/print.routes.js";
 
 const app = express();
 
@@ -25,7 +24,9 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Health
-app.get("/health", (_req, res) => res.json({ ok: true, env: process.env.NODE_ENV || "development" }));
+app.get("/health", (_req, res) =>
+  res.json({ ok: true, env: process.env.NODE_ENV || "development" })
+);
 
 // Public routes (ไม่ต้องล็อกอิน)
 mountPublicRoutes(app);
@@ -33,9 +34,6 @@ mountPublicRoutes(app);
 // Protected routes (ต้องล็อกอิน)
 app.use(requireAuth);
 mountProtectedRoutes(app);
-
-// Print PDF
-app.use("/api/print", printRoutes);
 
 // 404 fallback
 app.use((_req, res) => res.status(404).json({ message: "Not Found" }));
@@ -45,5 +43,7 @@ app.use(errorHandler);
 
 const port = Number(process.env.PORT || 5000);
 app.listen(port, () => {
-  console.log(`[API] Ready on http://localhost:${port} (${process.env.NODE_ENV || "development"})`);
+  console.log(
+    `[API] Ready on http://localhost:${port} (${process.env.NODE_ENV || "development"})`
+  );
 });

@@ -2,7 +2,7 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// helper
+// helpers
 const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -11,9 +11,9 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
  * Payload จาก POS:
  * {
  *   header: { branchId, docDate?, note? },
- *   lines: [{ productId, name, qty, price, discount? }], // ❌ ไม่ต้องส่ง sku/barcode เข้าตรงๆ
+ *   lines: [{ productId, name, qty, price, discount? }],
  *   totals: { subTotal, discountBill, grandTotal },
- *   payment: { method, receive?, evidenceUrl? }
+ *   payment: { method, receive?, evidenceUrl? } // method: CASH|TRANSFER|CARD
  * }
  */
 export async function createOrPaySaleBranch(req, res) {
@@ -28,16 +28,16 @@ export async function createOrPaySaleBranch(req, res) {
     if (!branchId) return res.status(400).json({ message: "branchId is required" });
     if (lines.length === 0) return res.status(400).json({ message: "lines is required" });
 
-    // ทำให้เข้ากับ schema จริง (SaleItem ไม่มี sku/barcode)
+    // map รายการให้ตรง schema: snapshot ชื่อไว้ใน productName
     const cleanLines = lines.map((it) => ({
-      productId : num(it.productId),
-      name      : String(it.name ?? ""),
-      qty       : num(it.qty),
-      unitPrice : num(it.price),
-      discount  : num(it.discount),
+      productId   : num(it.productId),
+      productName : String(it.name ?? ""),
+      qty         : num(it.qty),
+      unitPrice   : num(it.price),
+      discount    : num(it.discount),
     }));
 
-    // คำนวณซ้ำฝั่ง server เพื่อความถูกต้อง
+    // คำนวณซ้ำฝั่ง server
     const subTotalFromLines = cleanLines.reduce((s, x) => s + x.unitPrice * x.qty, 0);
     const discountFromLines = cleanLines.reduce((s, x) => s + x.discount, 0);
     const billDiscount      = num(totals?.discountBill);
@@ -45,8 +45,9 @@ export async function createOrPaySaleBranch(req, res) {
     const discount          = discountFromLines + billDiscount;
     const total             = Math.max(0, subtotal - discount);
 
+    // เก็บเป็น date-only (UTC midnight)
     const docDate = header?.docDate ? new Date(header.docDate) : new Date(todayISO());
-    const status  = "PAID"; // POS: จ่ายแล้วเป็น PAID
+    const status  = "PAID";
 
     const result = await prisma.$transaction(async (tx) => {
       // 1) ตรวจสต็อกสาขา
@@ -63,11 +64,11 @@ export async function createOrPaySaleBranch(req, res) {
         }
       }
 
-      // 2) สร้างเอกสารขาย + รายการ + ชำระเงิน (ตาม schema จริง)
+      // 2) สร้างเอกสารขาย + รายการ + ชำระเงิน
       const sale = await tx.sale.create({
         data: {
           branchId,
-          date    : new Date(docDate.toISOString().slice(0, 10)), // เก็บแบบ date-only
+          date    : new Date(docDate.toISOString().slice(0, 10)), // date-only
           note    : header?.note ?? null,
           status,
           subtotal,
@@ -75,19 +76,19 @@ export async function createOrPaySaleBranch(req, res) {
           total,
           items: {
             create: cleanLines.map((x) => ({
-              productId : x.productId,
-              name      : x.name,
-              qty       : x.qty,
-              unitPrice : x.unitPrice,
-              lineTotal : x.unitPrice * x.qty - x.discount,
+              productId   : x.productId,
+              productName : x.productName,
+              qty         : x.qty,
+              unitPrice   : x.unitPrice,
+              lineTotal   : x.unitPrice * x.qty - x.discount,
             })),
           },
           payments: pay
             ? {
                 create: [
                   {
-                    method     : pay.method || "CASH",
-                    amount     : num(pay.receive ?? total), // เก็บยอดรับจริง
+                    method     : pay.method || "CASH", // CASH | TRANSFER | CARD
+                    amount     : num(pay.receive ?? total),
                     evidenceUrl: pay.evidenceUrl ?? null,
                   },
                 ],
@@ -133,7 +134,7 @@ export async function listSalesBranch(req, res) {
     if (q) {
       where.OR = [
         { note:  { contains: q, mode: "insensitive" } },
-        // เติม field อื่นที่มีจริงใน Sale เช่น code/docNo ถ้าคุณมี
+        // ถ้ามี code/docNo ค่อยเพิ่มที่นี่
       ];
     }
 
@@ -144,7 +145,7 @@ export async function listSalesBranch(req, res) {
         take,
         skip,
         include: {
-          // include อื่นๆ ตามต้องการ เช่น branch: true, items: true
+          // include อื่น ๆ ตามต้องการ เช่น items: true, payments: true
         },
       }),
       prisma.sale.count({ where }),
@@ -156,6 +157,3 @@ export async function listSalesBranch(req, res) {
     res.status(500).json({ message: "LIST_SALE_FAILED", detail: String(e?.message || e) });
   }
 }
-
-// (ถ้าต้องมีพิมพ์ใบเสร็จ)
-// export async function printSaleBranch(req, res) { ... }

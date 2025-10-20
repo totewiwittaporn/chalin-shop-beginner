@@ -23,12 +23,13 @@ model Sale {
 }
 
 model SaleItem {
-  id        Int     @id @default(autoincrement())
-  saleId    Int
-  productId Int
-  qty       Int
-  unitPrice Decimal @db.Decimal(12, 2)
-  lineTotal Decimal @db.Decimal(12, 2)
+  id          Int     @id @default(autoincrement())
+  saleId      Int
+  productId   Int
+  productName String
+  qty         Int
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(12, 2)
 
   sale    Sale    @relation(fields: [saleId], references: [id])
   product Product @relation(fields: [productId], references: [id])

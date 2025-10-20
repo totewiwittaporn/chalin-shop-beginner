@@ -6,16 +6,18 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import Card from "@/components/ui/Card";
 import Table from "@/components/ui/Table";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
+import GradientPanel from "@/components/theme/GradientPanel";
+import GlassModal from "@/components/theme/GlassModal";
 
 /**
  * Props:
  *  - branchId?: number
  *  - pageSize?: number = 10
- *  - apiPath?: string = "/api/sales/branch"  // GET list endpoint (ตรงกับ backend)
+ *  - apiPath?: string = "/api/sales/branch"
+ *  - title?: string
  */
 const SalesDocsTable = forwardRef(function SalesDocsTable(
   {
@@ -32,6 +34,11 @@ const SalesDocsTable = forwardRef(function SalesDocsTable(
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  // print modal state
+  const [printOpen, setPrintOpen] = useState(false);
+  const [printTab, setPrintTab] = useState("compact"); // compact | full
+  const [selectedSale, setSelectedSale] = useState(null);
+
   const queryParams = useMemo(() => {
     const p = new URLSearchParams();
     p.set("page", String(page));
@@ -44,7 +51,6 @@ const SalesDocsTable = forwardRef(function SalesDocsTable(
     setLoading(true);
     setErr("");
     try {
-      // ใช้ axios instance => baseURL + Authorization header พร้อมใช้งาน
       const { data } = await api.get(`${apiPath}?${queryParams}`);
 
       const items = Array.isArray(data)
@@ -55,9 +61,8 @@ const SalesDocsTable = forwardRef(function SalesDocsTable(
 
       const norm = items.map((d) => ({
         id: d.id ?? d.docId ?? d._id ?? crypto.randomUUID(),
-        docNo: d.docNo ?? d.number ?? d.code ?? "-",
-        docDate: d.docDate ?? d.date ?? d.createdAt ?? null,
-        branchName: d.branchName ?? d.branch?.name ?? "-",
+        docNo: d.code ?? d.docNo ?? d.number ?? "-",
+        docDate: d.date ?? d.docDate ?? d.createdAt ?? null,
         total: Number(
           d.total ??
             d.grandTotal ??
@@ -66,8 +71,9 @@ const SalesDocsTable = forwardRef(function SalesDocsTable(
               ? d.totals.grandTotal
               : 0)
         ),
-        createdBy: d.createdBy ?? d.userName ?? d.createdUser ?? "-",
+        createdBy: d.createdByName ?? d.createdBy ?? d.userName ?? "-",
         status: d.status ?? "-",
+        _raw: d,
       }));
 
       setRows(norm);
@@ -96,90 +102,165 @@ const SalesDocsTable = forwardRef(function SalesDocsTable(
       maximumFractionDigits: 2,
     });
 
-  return (
-    <Card>
-      <Card.Header className="flex items-center justify-between">
-        <div className="font-medium">{title}</div>
-        <div className="text-xs text-slate-500">
-          หน้า {page} / {pageCount}
-        </div>
-      </Card.Header>
+  const openPrint = (row) => {
+    setSelectedSale(row?._raw || row);
+    setPrintTab("compact");
+    setPrintOpen(true);
+  };
 
-      <Card.Body>
+  return (
+    <>
+      <GradientPanel
+        title={title}
+        subtitle={`หน้า ${page} / ${pageCount}`}
+        innerClassName="p-0"
+      >
         <div className="overflow-x-auto">
           <Table>
             <Table.Head>
               <Table.Tr>
-                <Table.Th className="w-10">#</Table.Th>
-                <Table.Th className="w-36">เลขที่เอกสาร</Table.Th>
+                {/* เอา # และ สาขา ออกตามคำขอ */}
+                <Table.Th className="w-44">เลขที่เอกสาร</Table.Th>
                 <Table.Th className="w-32">วันที่</Table.Th>
-                <Table.Th>สาขา</Table.Th>
                 <Table.Th className="w-32 text-right">ยอดรวม</Table.Th>
-                <Table.Th className="w-32">โดย</Table.Th>
+                <Table.Th className="w-40">โดย</Table.Th>
                 <Table.Th className="w-28">สถานะ</Table.Th>
+                <Table.Th className="w-28 text-right">การทำงาน</Table.Th>
               </Table.Tr>
             </Table.Head>
 
             <Table.Body>
               {rows.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7} className="py-8 text-center text-slate-500">
+                  <Table.Td colSpan={6} className="py-8 text-center text-slate-500">
                     {loading ? "กำลังโหลด..." : err || "ยังไม่มีรายการ"}
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                rows.map((r, idx) => (
+                rows.map((r) => (
                   <Table.Tr key={r.id}>
-                    <Table.Td>{(page - 1) * pageSize + idx + 1}</Table.Td>
                     <Table.Td className="font-medium">{r.docNo}</Table.Td>
                     <Table.Td>
-                      {r.docDate
-                        ? new Date(r.docDate).toLocaleDateString()
-                        : "-"}
+                      {r.docDate ? new Date(r.docDate).toLocaleDateString() : "-"}
                     </Table.Td>
-                    <Table.Td>{r.branchName || "-"}</Table.Td>
                     <Table.Td className="text-right">{money(r.total)}</Table.Td>
-                    <Table.Td>{r.createdBy}</Table.Td>
+                    <Table.Td>{r.createdBy || "-"}</Table.Td>
                     <Table.Td>{r.status}</Table.Td>
+                    <Table.Td className="text-right">
+                      <Button kind="primary" onClick={() => openPrint(r)}>
+                        พิมพ์
+                      </Button>
+                    </Table.Td>
                   </Table.Tr>
                 ))
               )}
             </Table.Body>
           </Table>
         </div>
-      </Card.Body>
 
-      <Card.Footer className="flex items-center justify-between">
-        <div className="text-xs text-slate-500">
-          ทั้งหมด {total} รายการ
-          {branchId ? ` • สาขา: ${branchId}` : ""}
+        <div className="flex items-center justify-between px-3 py-3 border-t border-slate-100">
+          <div className="text-xs text-slate-600">
+            ทั้งหมด {total} รายการ
+            {branchId ? ` • สาขา: ${branchId}` : ""}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              kind="white"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              ก่อนหน้า
+            </Button>
+            <Button
+              kind="white"
+              disabled={page >= pageCount || loading}
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            >
+              ถัดไป
+            </Button>
+            <Button kind="primary" disabled={loading} onClick={() => fetchList()}>
+              รีเฟรช
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            kind="white"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+      </GradientPanel>
+
+      {/* Print Modal */}
+      <GlassModal
+        open={printOpen}
+        title={`พิมพ์ใบเสร็จ ${selectedSale?.code || selectedSale?.docNo || ""}`}
+        onClose={() => setPrintOpen(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button kind="white" onClick={() => setPrintOpen(false)}>
+              ปิด
+            </Button>
+            <Button
+              kind="primary"
+              onClick={() => {
+                // ตรงนี้สามารถต่อยอดให้เปิดหน้าพิมพ์เฉพาะแท็บได้
+                window.print();
+              }}
+            >
+              พิมพ์
+            </Button>
+          </div>
+        }
+      >
+        {/* Tabs */}
+        <div className="mb-4 flex gap-2">
+          <button
+            className={
+              "px-3 py-1 rounded-full text-sm " +
+              (printTab === "compact"
+                ? "bg-blue-600 text-white shadow"
+                : "bg-slate-200 text-slate-700 hover:bg-slate-300")
+            }
+            onClick={() => setPrintTab("compact")}
           >
-            ก่อนหน้า
-          </Button>
-          <Button
-            kind="white"
-            disabled={page >= pageCount || loading}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            ใบเสร็จแบบย่อ
+          </button>
+          <button
+            className={
+              "px-3 py-1 rounded-full text-sm " +
+              (printTab === "full"
+                ? "bg-blue-600 text-white shadow"
+                : "bg-slate-200 text-slate-700 hover:bg-slate-300")
+            }
+            onClick={() => setPrintTab("full")}
           >
-            ถัดไป
-          </Button>
-          <Button
-            kind="primary"
-            disabled={loading}
-            onClick={() => fetchList()}
-            title="รีเฟรช"
-          >
-            รีเฟรช
-          </Button>
+            ใบเสร็จแบบเต็มรูปแบบ
+          </button>
         </div>
-      </Card.Footer>
-    </Card>
+
+        {/* Tab contents (ตัวอย่างโครงสร้าง, ต่อ template ได้เลย) */}
+        {printTab === "compact" ? (
+          <div className="text-sm leading-6">
+            <div className="font-semibold mb-2">ใบเสร็จ (แบบย่อ)</div>
+            <div>เลขที่: {selectedSale?.code || selectedSale?.docNo || "-"}</div>
+            <div>วันที่: {selectedSale?.date ? new Date(selectedSale.date).toLocaleString() : "-"}</div>
+            <div>ยอดรวม: {money(selectedSale?.total)}</div>
+            <div>โดย: {selectedSale?.createdByName || selectedSale?.createdBy || "-"}</div>
+            <hr className="my-3" />
+            <div className="text-slate-500">
+              * ปรับรูปแบบและรายการสินค้าได้ที่คอมโพเนนต์นี้ (compact)
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm leading-6">
+            <div className="font-semibold mb-2">ใบเสร็จ (เต็มรูปแบบ)</div>
+            <div>เลขที่: {selectedSale?.code || selectedSale?.docNo || "-"}</div>
+            <div>วันที่: {selectedSale?.date ? new Date(selectedSale.date).toLocaleString() : "-"}</div>
+            <div>ยอดรวม: {money(selectedSale?.total)}</div>
+            <div>โดย: {selectedSale?.createdByName || selectedSale?.createdBy || "-"}</div>
+            <hr className="my-3" />
+            <div className="text-slate-500">
+              * ปรับหัวกระดาษ/ที่อยู่ร้าน/รายการสินค้า/สรุปเงิน/ขอบคุณลูกค้า ได้ที่คอมโพเนนต์นี้ (full)
+            </div>
+          </div>
+        )}
+      </GlassModal>
+    </>
   );
 });
 

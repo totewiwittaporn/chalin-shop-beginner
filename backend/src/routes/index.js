@@ -25,6 +25,9 @@ import bankAccountsRoutes from "#app/routes/bank/bank-accounts.routes.js";
 import deliveriesRoutes from "#app/routes/deliveries/deliveries.routes.js";
 import printRoutes from "#app/routes/print.routes.js";
 
+// ✅ แก้ให้ชี้ไฟล์ใหม่ที่ถูกต้อง
+import salesRoutes from "#app/routes/sales/sales.routes.js";
+
 export function mountPublicRoutes(app) {
   app.use("/api/auth", authRoutes);
   app.use("/api/auth/me", authMeRoutes);
@@ -33,11 +36,10 @@ export function mountPublicRoutes(app) {
 export function mountProtectedRoutes(app) {
   app.use("/api/products", productsRoutes);
   app.use("/api/product-types", productTypesRoutes);
-
   app.use("/api/users", usersRoutes);
   app.use("/api/branches", branchesRoutes);
 
-  // ✅ ติดตั้งเส้นทางสำหรับ POS สาขา
+  // POS (สาขา)
   app.use("/api/sales/branch", salesBranchRoutes);
 
   // Consignment
@@ -52,5 +54,10 @@ export function mountProtectedRoutes(app) {
   app.use("/api/inventory", inventoryRoutes);
   app.use("/api", bankAccountsRoutes);
   app.use("/api/deliveries", deliveriesRoutes);
+
+  // 📄 Print PDF (คงไว้ที่นี่ที่เดียว)
   app.use("/api/print", printRoutes);
+
+  // Sales summary / top-products / staff-summary
+  app.use("/api/sales", salesRoutes);
 }
