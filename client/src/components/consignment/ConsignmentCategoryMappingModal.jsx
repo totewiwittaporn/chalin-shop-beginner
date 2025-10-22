@@ -16,8 +16,8 @@ export default function ConsignmentCategoryMappingModal({
   const formId = "consignment-mapping-modal";
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState([]);    // รายการสินค้า (ผลค้นหา)
-  const [picked, setPicked] = useState(new Set()); // id ที่เลือก
+  const [rows, setRows] = useState([]);
+  const [picked, setPicked] = useState(new Set());
   const [openScan, setOpenScan] = useState(false);
 
   useEffect(() => {
@@ -60,6 +60,10 @@ export default function ConsignmentCategoryMappingModal({
   }
 
   const canAdd = useMemo(() => picked.size > 0, [picked]);
+  const triggerSubmit = () => {
+    const f = document.getElementById(formId);
+    if (f) f.requestSubmit();
+  };
 
   return (
     <>
@@ -70,7 +74,7 @@ export default function ConsignmentCategoryMappingModal({
         footer={
           <div className="flex justify-end gap-2">
             <Button kind="danger" type="button" onClick={onClose}>ยกเลิก</Button>
-            <Button kind="success" type="submit" form={formId} disabled={!canAdd}>
+            <Button kind="success" type="button" onClick={triggerSubmit} disabled={!canAdd}>
               เพิ่มสินค้า
             </Button>
           </div>
@@ -80,7 +84,6 @@ export default function ConsignmentCategoryMappingModal({
           <div className="text-slate-600">ยังไม่เลือกหมวด</div>
         ) : (
           <form id={formId} onSubmit={handleSubmit} className="grid gap-3">
-            {/* Search bar */}
             <div className="flex items-center gap-2">
               <Search size={16} className="opacity-70" />
               <input
@@ -125,7 +128,9 @@ export default function ConsignmentCategoryMappingModal({
                   ))}
                   {!loading && rows.length === 0 && (
                     <Table.Tr>
-                      <Table.Td colSpan={4} className="text-center text-slate-500 py-6">พิมพ์คำค้นหรือสแกนบาร์โค้ดเพื่อค้นหา</Table.Td>
+                      <Table.Td colSpan={4} className="text-center text-slate-500 py-6">
+                        พิมพ์คำค้นหรือสแกนบาร์โค้ดเพื่อค้นหา
+                      </Table.Td>
                     </Table.Tr>
                   )}
                 </Table.Body>
@@ -135,7 +140,6 @@ export default function ConsignmentCategoryMappingModal({
         )}
       </GlassModal>
 
-      {/* Scan modal */}
       <BarcodeScannerModal
         open={openScan}
         onClose={() => setOpenScan(false)}

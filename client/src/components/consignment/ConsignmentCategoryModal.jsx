@@ -16,9 +16,11 @@ export default function ConsignmentCategoryModal({
 
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (!open) return;
+    setErrorMsg("");
     if (isEdit && initial) {
       setCode(initial.code ?? "");
       setName(initial.name ?? "");
@@ -35,15 +37,34 @@ export default function ConsignmentCategoryModal({
     if (!canSave || busy) return;
 
     const payload = {
-      code: code.trim(),
+      code: code.trim().toUpperCase(),
       name: name.trim(),
-      partnerId, // เผื่อ backend ต้องการตอนสร้าง
+      partnerId,
     };
-    if (isEdit) {
-      await onSubmit?.(initial?.id, payload);
-    } else {
-      await onSubmit?.(payload);
+
+    try {
+      if (isEdit) {
+        await onSubmit?.(initial?.id, payload);
+      } else {
+        await onSubmit?.(payload);
+      }
+      setErrorMsg("");
+    } catch (err) {
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      if (status === 409) {
+        setErrorMsg(data?.message || "รหัสหมวดนี้ถูกใช้แล้วในร้านนี้");
+      } else if (status === 400) {
+        setErrorMsg(data?.error || "ข้อมูลไม่ครบถ้วน");
+      } else {
+        setErrorMsg("เกิดข้อผิดพลาด ไม่สามารถบันทึกได้");
+      }
     }
+  }
+
+  function triggerSubmit() {
+    const f = document.getElementById(formId);
+    if (f) f.requestSubmit();
   }
 
   return (
@@ -54,13 +75,25 @@ export default function ConsignmentCategoryModal({
       footer={
         <div className="flex justify-end gap-2">
           <Button kind="danger" type="button" onClick={onClose} disabled={busy}>ยกเลิก</Button>
-          <Button kind="success" type="submit" form={formId} disabled={!canSave || busy} loading={busy}>
+          <Button
+            kind="success"
+            type="button"
+            onClick={triggerSubmit}
+            disabled={!canSave || busy}
+            loading={busy}
+          >
             บันทึก
           </Button>
         </div>
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="grid gap-3">
+        {errorMsg && (
+          <div className="px-3 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200">
+            {errorMsg}
+          </div>
+        )}
+
         <div>
           <label className="block text-xs text-slate-600 mb-1">รหัสหมวด</label>
           <input

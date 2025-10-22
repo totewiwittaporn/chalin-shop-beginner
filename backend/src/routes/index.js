@@ -13,9 +13,7 @@ import salesBranchRoutes from "#app/routes/sales/branch/sales.routes.js";
 import salesDashboardRoutes from "#app/routes/sales/dashboard.routes.js";
 
 // Consignment
-import consignmentPartnersRouter from "#app/routes/consignment/consignment.partners.routes.js";
-import consignmentCategoriesRouter from "#app/routes/consignment/consignment.categories.routes.js";
-import consignmentCategoryProductsRouter from "#app/routes/consignment/consignment.categoryProducts.routes.js";
+import consignmentRouter from "#app/routes/consignment/index.js";
 import consignmentDeliveriesRoutes from "#app/routes/deliveries/consignmentDeliveries.routes.js";
 
 // Others
@@ -54,9 +52,7 @@ export function mountProtectedRoutes(app) {
   app.use("/api/sales", salesDashboardRoutes);
 
   // Consignment
-  app.use("/api/consignment/partners", consignmentPartnersRouter);
-  app.use("/api/consignment/categories", consignmentCategoriesRouter);
-  app.use("/api/consignment/categories", consignmentCategoryProductsRouter); // (เดิมของคุณ)
+  app.use("/api/consignment", consignmentRouter);
   app.use("/api/deliveries/consignment", consignmentDeliveriesRoutes);
 
   // Others

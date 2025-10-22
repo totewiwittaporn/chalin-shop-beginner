@@ -80,6 +80,11 @@ export default function ConsignmentShopFormModal({
     onSubmit?.(payload);
   }
 
+  const triggerSubmit = () => {
+    const f = document.getElementById(formId);
+    if (f) f.requestSubmit();
+  };
+
   return (
     <GlassModal
       open={open}
@@ -90,7 +95,13 @@ export default function ConsignmentShopFormModal({
           <Button kind="danger" type="button" onClick={onClose} disabled={busy}>
             ยกเลิก
           </Button>
-          <Button kind="success" type="submit" form={formId} disabled={!canSave || busy} loading={busy}>
+          <Button
+            kind="success"
+            type="button"
+            onClick={triggerSubmit}
+            disabled={!canSave || busy}
+            loading={busy}
+          >
             บันทึก
           </Button>
         </div>

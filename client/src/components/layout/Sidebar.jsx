@@ -1,91 +1,95 @@
-import { NavLink, Link } from "react-router-dom";
 import { useMemo } from "react";
-import { MOBILE_GROUPS } from "@/nav.config"; // ปรับพาธให้ตรงโปรเจกต์คุณ
+import { NavLink } from "react-router-dom";
+import { SIDEBAR_GROUPS } from "@/nav.config";
+import { useSidebarStore } from "@/store/ui/sidebarStore";
 
-function roleHomePath(roleUpper) {
-  const r = String(roleUpper || "").toUpperCase();
-  if (r === "ADMIN") return "/dashboard/admin";
-  if (r === "STAFF") return "/dashboard/staff";
-  if (r === "CONSIGNMENT") return "/dashboard/consignment";
-  if (r === "QUOTE_VIEWER") return "/docs/quotes"; // ใบเสนอสินค้า
-  return "/dashboard"; // fallback
-}
-
-/**
- * Sidebar
- * - พื้นหลังเกรเดี้ยนจากธีม
- * - active/hover = glass (โปร่ง, เส้นขอบขาวบาง ๆ)
- * - แบรนด์ลิงก์ (CS + Chalin Shop) → ไปหน้าแรกตามบทบาท
- */
 export default function Sidebar({ user }) {
-  const roleLower = String(user?.role || "GUEST").toLowerCase();
-  const roleUpper = String(user?.role || "GUEST").toUpperCase();
+  const roleLower = String(user?.role || "guest").toLowerCase();
+  const groups = useMemo(() => SIDEBAR_GROUPS(roleLower), [roleLower]);
 
-  const groups = useMemo(() => MOBILE_GROUPS(roleLower), [roleLower]);
-  const homeTo = roleHomePath(roleUpper);
+  const railWidth = useSidebarStore((s) => s.railWidth);
+  const panelWidth = useSidebarStore((s) => s.panelWidth);
+  const openGroupId = useSidebarStore((s) => s.openGroupId);
+  const toggleGroup = useSidebarStore((s) => s.toggleGroup);
+  const closePanel = useSidebarStore((s) => s.closePanel);
 
-  const itemClass = ({ isActive }) =>
-    [
-      "px-3 py-2 rounded-xl transition",
-      "text-white/90 hover:text-white",
-      "hover:bg-white/15 hover:border hover:border-white/25",
-      "backdrop-blur-sm",
-      isActive
-        ? "bg-white/20 border border-white/30 shadow-[0_8px_24px_rgba(255,255,255,.12)]"
-        : "border border-transparent",
-    ].join(" ");
+  const panelOpen = Boolean(openGroupId);
+  const activeGroup = panelOpen ? groups.find((g) => g.id === openGroupId) : null;
 
   return (
-    <div className="h-full w-full">
-      {/* พื้นหลัง Sidebar = เกรเดี้ยนฟ้า → ม่วง */}
-      <div className="h-full w-full bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white">
-        <div className="h-full w-full flex flex-col px-4 py-3">
-          {/* Header: แบรนด์ลิงก์ไปหน้าแรกตามบทบาท */}
-          <Link to={homeTo} className="mb-3" aria-label="ไปหน้าแรก">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-2xl bg-white/85 grid place-items-center text-[#0b1220] font-bold">
-                CS
-              </div>
-              <div className="text-lg font-semibold drop-shadow-sm">
-                Chalin&nbsp;Shop
-              </div>
-            </div>
-          </Link>
-
-          <div className="h-px bg-white/25 mb-3" />
-
-          {/* Groups */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            {groups.map((g) => (
-              <div key={g.id || g.label} className="mb-2">
-                <div className="px-2 pb-1 text-[11px] uppercase tracking-wide text-white/75">
-                  {g.label}
-                </div>
-                <nav className="grid gap-1">
-                  {g.items.map((it) => (
-                    <NavLink
-                      key={it.to}
-                      to={it.to}
-                      end={it.end === true}
-                      className={itemClass}
-                    >
-                      {it.label}
-                    </NavLink>
-                  ))}
-                </nav>
-              </div>
-            ))}
+    <>
+      {/* Rail */}
+      <aside
+        className="fixed inset-y-0 left-0 z-40 text-white bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] backdrop-blur-md border-r border-white/15"
+        style={{ width: railWidth }}
+      >
+        <div className="h-full flex flex-col items-center py-3 gap-2">
+          <div className="flex-1 overflow-y-auto flex flex-col items-center gap-2 px-2">
+            {groups.map((g) => {
+              const Icon = g.icon;
+              const active = openGroupId === g.id;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => toggleGroup(g.id)}
+                  title={g.label}
+                  className={[
+                    "group size-11 rounded-full grid place-items-center border transition",
+                    active
+                      ? "bg-white/25 border-white/40 shadow-[0_8px_24px_rgba(255,255,255,.18)]"
+                      : "bg-white/10 hover:bg-white/15 border-white/20",
+                  ].join(" ")}
+                >
+                  {Icon ? (
+                    <Icon className={["size-5", active ? "text-white" : "text-white/90"].join(" ")} />
+                  ) : (
+                    <span className="text-sm">{g.label?.[0] || "?"}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Footer (ย่อบทบาท/สาขา) */}
-          <div className="mt-auto pt-2">
-            <div className="text-[11px] text-white/80">
-              {roleUpper}
-              {user?.branch?.name ? ` • ${user.branch.name}` : ""}
-            </div>
+          <div className="pb-2 text-[10px] text-white/85 tracking-wide">
+            {(user?.role || "").toUpperCase() || "ROLE"}
           </div>
         </div>
-      </div>
-    </div>
+      </aside>
+
+      {/* Panel */}
+      {panelOpen && activeGroup && (
+        <aside
+          className="fixed inset-y-0 z-30 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white backdrop-blur-md border-r border-white/15"
+          style={{ left: railWidth, width: panelWidth }}
+        >
+          <div className="h-full flex flex-col py-3">
+            <div className="px-4 pb-2 font-semibold tracking-wide">{activeGroup.label}</div>
+            <div className="h-px bg-white/25 mx-4 mb-2" />
+            <nav className="flex-1 overflow-y-auto px-3 pr-2">
+              {activeGroup.items?.map((it) => (
+                <NavLink
+                  key={it.to}
+                  to={it.to}
+                  end={it.end === true}
+                  onClick={closePanel}
+                  className={({ isActive }) =>
+                    [
+                      "block px-3 py-2 rounded-xl transition",
+                      "text-white/90 hover:text-white",
+                      "hover:bg-white/15 hover:border hover:border-white/25 backdrop-blur-sm",
+                      isActive
+                        ? "bg-white/20 border border-white/30 shadow-[0_8px_24px_rgba(255,255,255,.12)]"
+                        : "border border-transparent",
+                    ].join(" ")
+                  }
+                >
+                  {it.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </aside>
+      )}
+    </>
   );
 }
