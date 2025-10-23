@@ -1,17 +1,16 @@
 // backend/src/controllers/deliveries/consignmentDeliveries.controller.js
-// ESM version – แยก "ทำรายการ" ออกจาก "เอกสาร"
-// - รับ lines เป็นสินค้าอย่างเดียว [{ productId, qty }]
-// - คิดราคาแบบ 2 ชั้น (consignmentInventory.price > product.salePrice)
-// - Snapshot ฟิลด์สำคัญลงบรรทัดเอกสาร (unitPrice, basePrice, partnerPriceUsed, partnerCategory*)
-
 import prisma from "#app/lib/prisma.js";
 import { resolveConsignPrice } from "#app/services/price/resolveConsignPrice.js";
 import { resolvePartnerCategory } from "#app/services/consignment/categoryResolver.js";
 
-/**
- * GET /api/deliveries/consignment
- * Query: q, page, pageSize
- */
+// ช่วยเช็คให้ไม่ล้มทั้งโปรเซส หากชื่อโมเดลไม่ตรงสคีมาจริง
+function getModel() {
+  const m = prisma?.consignmentDelivery; // ✅ ชื่อที่ถูกต้อง (มี 'ment')
+  if (!m) throw new Error("Prisma model 'ConsignmentDelivery' not found. Check schema/model name.");
+  return m;
+}
+
+/** GET /api/deliveries/consignment */
 export async function list(req, res) {
   const { q = "", page = 1, pageSize = 30 } = req.query;
   const take = Math.min(Number(pageSize) || 30, 100);
@@ -27,28 +26,28 @@ export async function list(req, res) {
       }
     : {};
 
+  const Model = getModel();
   const [items, total] = await Promise.all([
-    prisma.consignDelivery.findMany({
+    Model.findMany({
       where,
       orderBy: { id: "desc" },
       include: { partner: true },
       skip,
       take,
     }),
-    prisma.consignDelivery.count({ where }),
+    Model.count({ where }),
   ]);
 
   res.json({ items, total, page: Number(page), pageSize: take });
 }
 
-/**
- * GET /api/deliveries/consignment/:id
- */
+/** GET /api/deliveries/consignment/:id */
 export async function get(req, res) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "invalid id" });
 
-  const doc = await prisma.consignDelivery.findUnique({
+  const Model = getModel();
+  const doc = await Model.findUnique({
     where: { id },
     include: { lines: true, partner: true },
   });
@@ -56,16 +55,7 @@ export async function get(req, res) {
   res.json(doc);
 }
 
-/**
- * POST /api/deliveries/consignment
- * body: {
- *   fromBranchId: number,
- *   toPartnerId?: number,
- *   toBranchId?: number,
- *   lines: [{ productId, qty }]
- * }
- * หมายเหตุ: ทำรายการเลือก “สินค้า” อย่างเดียว (ไม่รับจากหมวด)
- */
+/** POST /api/deliveries/consignment */
 export async function create(req, res) {
   const { fromBranchId, toPartnerId, toBranchId, lines = [] } = req.body;
 
@@ -73,7 +63,6 @@ export async function create(req, res) {
   if (!Array.isArray(lines) || lines.length === 0) return res.status(400).json({ message: "lines required" });
   if (!toPartnerId && !toBranchId) return res.status(400).json({ message: "toPartnerId or toBranchId required" });
 
-  // โหลดข้อมูลสินค้าเป็นชุดเดียว
   const ids = lines.map((l) => Number(l.productId)).filter(Boolean);
   const products = await prisma.product.findMany({
     where: { id: { in: ids } },
@@ -81,7 +70,6 @@ export async function create(req, res) {
   });
   const prodMap = new Map(products.map((p) => [p.id, p]));
 
-  // เตรียมบรรทัดพร้อม snapshot
   const prepared = [];
   for (const l of lines) {
     const productId = Number(l.productId);
@@ -102,6 +90,9 @@ export async function create(req, res) {
       partnerCategoryId: cat?.id ?? null,
       partnerCategoryCode: cat?.code ?? null,
       partnerCategoryName: cat?.name ?? null,
+      // (แนะนำ snapshot ด้วย ถ้า schema รองรับ)
+      barcode: p.barcode ?? null,
+      name: p.name ?? null,
     });
   }
 
@@ -110,17 +101,18 @@ export async function create(req, res) {
   const total = prepared.reduce((sum, l) => sum + Number(l.unitPrice) * Number(l.qty), 0);
   const docNo = await nextDocNo();
 
+  const Model = getModel();
   const doc = await prisma.$transaction(async (tx) => {
-    const created = await tx.consignDelivery.create({
+    const created = await Model.create({
       data: {
         docNo,
         docDate: new Date(),
         fromBranchId: Number(fromBranchId),
         toPartnerId: toPartnerId ? Number(toPartnerId) : null,
         toBranchId: toBranchId ? Number(toBranchId) : null,
-        moneyGrand: total, // ปรับชื่อ field นี้ให้ตรง schema จริงของคุณ (เช่น total หรือ money.grand)
-        issuerName: null,  // TODO: snapshot ชื่อสาขาต้นทาง (ถ้าต้องการ)
-        recipientName: null, // TODO: snapshot ชื่อผู้รับ/ร้าน (ถ้าต้องการ)
+        moneyGrand: total, // ปรับชื่อฟิลด์ตาม schema จริงได้
+        issuerName: null,
+        recipientName: null,
         lines: { create: prepared },
       },
       include: { lines: true, partner: true },
@@ -131,17 +123,17 @@ export async function create(req, res) {
   res.json(doc);
 }
 
-// Gen เลขที่เอกสารอย่างง่าย ปรับตามฟอร์แมตจริงได้
 async function nextDocNo() {
   const prefix = "DLV-CN";
-  const last = await prisma.consignDelivery.findFirst({
+  const Model = getModel();
+  const last = await Model.findFirst({
     where: { docNo: { startsWith: prefix } },
     orderBy: { id: "desc" },
     select: { docNo: true },
   });
   let n = 1;
   if (last?.docNo) {
-    const m = String(last.docNo).match(/(\d+)$/);
+    const m = String(last.docNo).match(/(\\d+)$/);
     if (m) n = Number(m[1]) + 1;
   }
   return `${prefix}-${String(n).padStart(5, "0")}`;

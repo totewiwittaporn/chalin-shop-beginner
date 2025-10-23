@@ -31,7 +31,12 @@ model ConsignmentPartner {
   StockLedger StockLedger[]
   StockCount  StockCount[]
   Transfer    Transfer[]
+
+  // =============== New fields for Consignment Delivery ===============
+  deliveryDocTemplate   ConsignDeliveryDocTemplate @default(CAT_ONLY)
+  consignmentDeliveries ConsignmentDelivery[]
 }
+
 
 model ConsignmentCategory {
   id        Int     @id @default(autoincrement())
