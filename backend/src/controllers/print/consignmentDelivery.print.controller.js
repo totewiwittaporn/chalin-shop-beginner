@@ -1,6 +1,4 @@
 // backend/src/controllers/print/consignmentDelivery.print.controller.js
-// เลือก renderer ตาม template ของร้าน แล้วคืน HTML สำหรับพิมพ์
-
 import prisma from "#app/lib/prisma.js";
 import { renderCAT_ONLY } from "#app/renderers/consignmentDelivery/CAT_ONLY.js";
 import { renderCODE_AND_CAT } from "#app/renderers/consignmentDelivery/CODE_AND_CAT.js";
@@ -14,13 +12,24 @@ export async function print(req, res) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).send("invalid id");
 
-  const doc = await prisma.consignDelivery.findUnique({
+  const d = await prisma.consignmentDelivery.findUnique({
     where: { id },
-    include: { partner: true, lines: true },
+    include: {
+      toPartner: true,
+      lines: true,
+    },
   });
-  if (!doc) return res.status(404).send("not found");
+  if (!d) return res.status(404).send("not found");
 
-  const template = doc?.partner?.deliveryDocTemplate || "CAT_ONLY";
+  const doc = {
+    id: d.id,
+    docNo: d.code || `CDN-${d.id}`,
+    docDate: d.date,
+    partner: d.toPartner || null,
+    lines: d.lines,
+  };
+
+  const template = d.toPartner?.deliveryDocTemplate || "CAT_ONLY";
   const render = TEMPLATE[template] || renderCAT_ONLY;
 
   const html = render(doc);

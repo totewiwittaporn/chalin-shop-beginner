@@ -37,7 +37,6 @@ model ConsignmentPartner {
   consignmentDeliveries ConsignmentDelivery[]
 }
 
-
 model ConsignmentCategory {
   id        Int     @id @default(autoincrement())
   partnerId Int

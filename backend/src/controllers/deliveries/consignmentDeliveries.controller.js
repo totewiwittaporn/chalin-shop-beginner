@@ -3,42 +3,43 @@ import prisma from "#app/lib/prisma.js";
 import { resolveConsignPrice } from "#app/services/price/resolveConsignPrice.js";
 import { resolvePartnerCategory } from "#app/services/consignment/categoryResolver.js";
 
-// ช่วยเช็คให้ไม่ล้มทั้งโปรเซส หากชื่อโมเดลไม่ตรงสคีมาจริง
-function getModel() {
-  const m = prisma?.consignmentDelivery; // ✅ ชื่อที่ถูกต้อง (มี 'ment')
-  if (!m) throw new Error("Prisma model 'ConsignmentDelivery' not found. Check schema/model name.");
-  return m;
-}
-
-/** GET /api/deliveries/consignment */
+/** GET /api/deliveries/consignment?q=&page=&pageSize= */
 export async function list(req, res) {
   const { q = "", page = 1, pageSize = 30 } = req.query;
   const take = Math.min(Number(pageSize) || 30, 100);
   const skip = (Number(page) - 1) * take;
 
-  const where = q
-    ? {
-        OR: [
-          { docNo: { contains: String(q), mode: "insensitive" } },
-          { partner: { name: { contains: String(q), mode: "insensitive" } } },
-          { recipientName: { contains: String(q), mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where =
+    q?.trim() !== ""
+      ? {
+          OR: [
+            { code: { contains: String(q), mode: "insensitive" } },
+            { toPartner: { name: { contains: String(q), mode: "insensitive" } } },
+            { recipientName: { contains: String(q), mode: "insensitive" } },
+          ],
+        }
+      : {};
 
-  const Model = getModel();
   const [items, total] = await Promise.all([
-    Model.findMany({
+    prisma.consignmentDelivery.findMany({
       where,
-      orderBy: { id: "desc" },
-      include: { partner: true },
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      include: { toPartner: true },
       skip,
       take,
     }),
-    Model.count({ where }),
+    prisma.consignmentDelivery.count({ where }),
   ]);
 
-  res.json({ items, total, page: Number(page), pageSize: take });
+  const mapped = items.map((d) => ({
+    id: d.id,
+    docNo: d.code || `CDN-${d.id}`,
+    docDate: d.date,
+    partnerName: d.toPartner?.name || d.recipientName || null,
+    total: d.moneyGrand ?? null,
+  }));
+
+  res.json({ items: mapped, total, page: Number(page), pageSize: take });
 }
 
 /** GET /api/deliveries/consignment/:id */
@@ -46,22 +47,47 @@ export async function get(req, res) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "invalid id" });
 
-  const Model = getModel();
-  const doc = await Model.findUnique({
+  const d = await prisma.consignmentDelivery.findUnique({
     where: { id },
-    include: { lines: true, partner: true },
+    include: { toPartner: true, lines: true },
   });
-  if (!doc) return res.status(404).json({ message: "Document not found" });
+  if (!d) return res.status(404).json({ message: "Document not found" });
+
+  const doc = {
+    id: d.id,
+    docNo: d.code || `CDN-${d.id}`,
+    docDate: d.date,
+    partner: d.toPartner || null,
+    lines: d.lines,
+    money: { grand: d.moneyGrand ?? 0 },
+  };
   res.json(doc);
 }
 
-/** POST /api/deliveries/consignment */
+/** POST /api/deliveries/consignment
+ * body: {
+ *   type: "SEND" | "RETURN",
+ *   fromBranchId: number,
+ *   toPartnerId?: number, // SEND
+ *   toBranchId?: number,  // RETURN
+ *   lines: [{ productId, qty }],
+ *   notes?: string
+ * }
+ */
 export async function create(req, res) {
-  const { fromBranchId, toPartnerId, toBranchId, lines = [] } = req.body;
+  const { type, fromBranchId, toPartnerId, toBranchId, lines = [], notes } = req.body;
+
+  if (type !== "SEND" && type !== "RETURN")
+    return res.status(400).json({ message: "type must be SEND or RETURN" });
 
   if (!fromBranchId) return res.status(400).json({ message: "fromBranchId is required" });
-  if (!Array.isArray(lines) || lines.length === 0) return res.status(400).json({ message: "lines required" });
-  if (!toPartnerId && !toBranchId) return res.status(400).json({ message: "toPartnerId or toBranchId required" });
+  if (!Array.isArray(lines) || lines.length === 0)
+    return res.status(400).json({ message: "lines required" });
+
+  if (type === "SEND" && !toPartnerId)
+    return res.status(400).json({ message: "toPartnerId required for SEND" });
+  if (type === "RETURN" && !toBranchId)
+    return res.status(400).json({ message: "toBranchId required for RETURN" });
 
   const ids = lines.map((l) => Number(l.productId)).filter(Boolean);
   const products = await prisma.product.findMany({
@@ -78,8 +104,12 @@ export async function create(req, res) {
     if (!p) continue;
 
     const basePrice = Number(p.salePrice || 0);
-    const unitPrice = await resolveConsignPrice(toPartnerId ?? null, productId, basePrice);
-    const cat = toPartnerId ? await resolvePartnerCategory(toPartnerId, productId) : null;
+    const partnerId = type === "SEND" ? Number(toPartnerId) : null;
+    const unitPrice = partnerId
+      ? await resolveConsignPrice(partnerId, productId, basePrice)
+      : basePrice;
+
+    const cat = partnerId ? await resolvePartnerCategory(partnerId, productId) : null;
 
     prepared.push({
       productId,
@@ -90,7 +120,6 @@ export async function create(req, res) {
       partnerCategoryId: cat?.id ?? null,
       partnerCategoryCode: cat?.code ?? null,
       partnerCategoryName: cat?.name ?? null,
-      // (แนะนำ snapshot ด้วย ถ้า schema รองรับ)
       barcode: p.barcode ?? null,
       name: p.name ?? null,
     });
@@ -98,43 +127,52 @@ export async function create(req, res) {
 
   if (prepared.length === 0) return res.status(400).json({ message: "no valid lines" });
 
-  const total = prepared.reduce((sum, l) => sum + Number(l.unitPrice) * Number(l.qty), 0);
-  const docNo = await nextDocNo();
+  const total = prepared.reduce(
+    (sum, l) => sum + Number(l.unitPrice) * Number(l.qty),
+    0
+  );
 
-  const Model = getModel();
-  const doc = await prisma.$transaction(async (tx) => {
-    const created = await Model.create({
-      data: {
-        docNo,
-        docDate: new Date(),
-        fromBranchId: Number(fromBranchId),
-        toPartnerId: toPartnerId ? Number(toPartnerId) : null,
-        toBranchId: toBranchId ? Number(toBranchId) : null,
-        moneyGrand: total, // ปรับชื่อฟิลด์ตาม schema จริงได้
-        issuerName: null,
-        recipientName: null,
-        lines: { create: prepared },
-      },
-      include: { lines: true, partner: true },
-    });
-    return created;
+  const code = await nextCode();
+
+  const created = await prisma.consignmentDelivery.create({
+    data: {
+      code,
+      date: new Date(),
+      type,
+      status: "DRAFT",
+      notes: notes || null,
+      fromBranchId: Number(fromBranchId),
+      toPartnerId: type === "SEND" ? Number(toPartnerId) : null,
+      toBranchId: type === "RETURN" ? Number(toBranchId) : null,
+      moneyGrand: total,
+      lines: { create: prepared },
+    },
+    include: { toPartner: true, lines: true },
   });
+
+  const doc = {
+    id: created.id,
+    docNo: created.code || `CDN-${created.id}`,
+    docDate: created.date,
+    partner: created.toPartner || null,
+    lines: created.lines,
+    money: { grand: created.moneyGrand ?? 0 },
+  };
 
   res.json(doc);
 }
 
-async function nextDocNo() {
-  const prefix = "DLV-CN";
-  const Model = getModel();
-  const last = await Model.findFirst({
-    where: { docNo: { startsWith: prefix } },
+async function nextCode() {
+  const prefix = "CDN";
+  const last = await prisma.consignmentDelivery.findFirst({
+    where: { code: { startsWith: prefix } },
     orderBy: { id: "desc" },
-    select: { docNo: true },
+    select: { code: true },
   });
   let n = 1;
-  if (last?.docNo) {
-    const m = String(last.docNo).match(/(\\d+)$/);
+  if (last?.code) {
+    const m = String(last.code).match(/(\d+)$/);
     if (m) n = Number(m[1]) + 1;
   }
-  return `${prefix}-${String(n).padStart(5, "0")}`;
+  return `${prefix}-${String(n).padStart(6, "0")}`;
 }

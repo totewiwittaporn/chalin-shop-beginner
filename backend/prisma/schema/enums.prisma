@@ -90,8 +90,8 @@ enum ConsignDeliveryDocTemplate {
 }
 
 enum ConsignDeliveryType {
-  SEND     // ส่งไปยังร้านฝากขาย
-  RETURN   // คืนกลับสาขาหลัก
+  SEND // ส่งไปยังร้านฝากขาย
+  RETURN // คืนกลับสาขาหลัก
 }
 
 enum ConsignDeliveryStatus {
