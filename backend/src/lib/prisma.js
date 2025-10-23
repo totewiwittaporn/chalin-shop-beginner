@@ -1,16 +1,13 @@
-// backend/src/lib/prisma.js
-import { PrismaClient } from "@prisma/client";
+// backend/src/lib/prisma.js  หรือไฟล์ที่ alias เป็น "#app/lib/prisma.js"
+import { PrismaClient } from '@prisma/client';
 
-// ป้องกันหลายอินสแตนซ์เวลา dev (nodemon/hot reload)
+// ป้องกันสร้าง PrismaClient ซ้ำใน dev (HMR / nodemon)
 const globalForPrisma = globalThis;
+const prisma = globalForPrisma.__prisma__ ?? new PrismaClient();
 
-export const prisma =
-  globalForPrisma.__prisma__ || new PrismaClient({
-    log: process.env.NODE_ENV === "production" ? [] : ["query", "info", "warn", "error"],
-  });
-
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.__prisma__ = prisma;
 }
 
-export default prisma;
+export default prisma;           // <<--- สำคัญ: default export
+export { PrismaClient, prisma }; // (เผื่อบางไฟล์อยาก import แบบ named)

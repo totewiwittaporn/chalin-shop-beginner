@@ -34,8 +34,9 @@ model ConsignmentPartner {
 }
 
 model ConsignmentCategory {
-  id        Int @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   partnerId Int
+  isActive  Boolean @default(true)
 
   /// รหัสหมวด (เช่น SNK, BAG-CL, etc.)
   code String
@@ -63,6 +64,7 @@ model ConsignmentCategoryMap {
   partnerId  Int
   categoryId Int
   productId  Int
+  isActive   Boolean @default(true)
 
   partner ConsignmentPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
