@@ -7,6 +7,8 @@ import Table from "@/components/ui/Table";
 import Button from "@/components/ui/Button";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import { Search, ScanLine, Plus, Trash2, RefreshCcw } from "lucide-react";
+// ✅ NEW: ปุ่มสร้าง/พิมพ์เอกสาร
+import CreateDeliveryDocButton from "@/components/docs/CreateDeliveryDocButton.jsx";
 
 const money = (v) =>
   new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
@@ -107,6 +109,7 @@ export default function ConsignmentDeliveryPage() {
 
   // [2] ค้นหาสินค้า (ชื่อ/บาร์โค้ด)
   const [q, setQ] = useState("");
+  
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
 
@@ -284,7 +287,7 @@ export default function ConsignmentDeliveryPage() {
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-slate-400" />
                 <input
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                  className="w/full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
                   placeholder="ค้นหาสาขา"
                   value={branchQ}
                   onChange={(e) => setBranchQ(e.target.value)}
@@ -303,9 +306,7 @@ export default function ConsignmentDeliveryPage() {
                   )
                   .map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.code ? `[${b.code}] ` : ""}
-                      {b.name}
-                      {b.isMain ? " (หลัก)" : ""}
+                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
                     </option>
                   ))}
               </select>
@@ -320,7 +321,7 @@ export default function ConsignmentDeliveryPage() {
                 <div className="flex items-center gap-2">
                   <Search size={16} className="text-slate-400" />
                   <input
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                    className="w/full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
                     placeholder="ค้นหาร้านฝากขาย"
                     value={partnerQ}
                     onChange={(e) => setPartnerQ(e.target.value)}
@@ -339,8 +340,7 @@ export default function ConsignmentDeliveryPage() {
                     )
                     .map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.code ? `[${p.code}] ` : ""}
-                        {p.name}
+                        {p.code ? `[${p.code}] ` : ""}{p.name}
                       </option>
                     ))}
                 </select>
@@ -359,9 +359,7 @@ export default function ConsignmentDeliveryPage() {
                   <option value="">— เลือกสาขา —</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.code ? `[${b.code}] ` : ""}
-                      {b.name}
-                      {b.isMain ? " (หลัก)" : ""}
+                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
                     </option>
                   ))}
                 </select>
@@ -441,7 +439,6 @@ export default function ConsignmentDeliveryPage() {
               <Button kind="white" onClick={() => saveDocument(true)} disabled={saving || !lines.length}>
                 {saving ? "กำลังบันทึก..." : "บันทึกร่าง"}
               </Button>
-             
             </div>
           }
         >
@@ -522,7 +519,7 @@ export default function ConsignmentDeliveryPage() {
                   <Table.Th>ปลายทาง</Table.Th>
                   <Table.Th className="w-[140px] text-right">ยอดสุทธิ</Table.Th>
                   <Table.Th className="w-[120px] text-center">สถานะ</Table.Th>
-                  <Table.Th className="w-[420px] text-right">เครื่องมือ</Table.Th>
+                  <Table.Th className="w-[520px] text-right">เครื่องมือ</Table.Th>
                 </Table.Tr>
               </Table.Head>
               <Table.Body loading={docsLoading}>
@@ -542,6 +539,9 @@ export default function ConsignmentDeliveryPage() {
                       <Table.Td className="text-center"><StatusChip status={status} /></Table.Td>
                       <Table.Td className="text-right">
                         <div className="flex flex-wrap gap-2 justify-end">
+                          {/* ✅ NEW: สร้างเอกสาร/พิมพ์ใบส่ง (A4) จาก Document system */}
+                          <CreateDeliveryDocButton deliveryId={d.id} kind="consignment" />
+
                           {/* ร่าง → ดูตัวอย่าง + ยืนยันส่ง */}
                           {status === "DRAFT" && (
                             <>

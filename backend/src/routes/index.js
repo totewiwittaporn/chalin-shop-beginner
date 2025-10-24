@@ -23,6 +23,7 @@ import ordersRoutes from "#app/routes/orders/orders.routes.js";
 import inventoryRoutes from "#app/routes/inventory/inventory.routes.js";
 import bankAccountsRoutes from "#app/routes/bank/bank-accounts.routes.js";
 import deliveriesRoutes from "#app/routes/deliveries/branchDeliveries.routes.js";
+import deliveryDocRoutes from "#app/routes/docs/delivery.routes.js";
 import printRoutes from "#app/routes/print.routes.js";
 
 // Headquarters (core)
@@ -36,6 +37,10 @@ import partnerDocPrefsRouter from "#app/routes/docs/partners.docPrefs.routes.js"
 // ✅ NEW: operational deliveries (ใช้โมเดลใหม่)
 import branchOperationalRoutes from "#app/routes/deliveries/branchDeliveries.routes.js";
 import consignOperationalRoutes from "#app/routes/deliveries/consignmentDeliveries.routes.js";
+
+// Doc
+import documentsRoutes from "#app/routes/docs/documents.routes.js";
+
 
 // ----------------------------------------
 
@@ -82,5 +87,8 @@ export function mountProtectedRoutes(app) {
   app.use("/api/consignment/partners", partnerDocPrefsRouter);
 
   // Print PDF
+  app.use("/api/docs/delivery", deliveryDocRoutes);
   app.use("/api/print", printRoutes);
+  app.use("/api/docs", documentsRoutes);
+
 }

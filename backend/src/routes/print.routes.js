@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAuth, requireRole } from "#app/middleware/auth.js";
 import { printDelivery } from "#app/controllers/deliveries/branchDeliveries.controller.js";
 import { renderDeliveryNoteA4PDF } from "#app/print/printService.js";
+import { renderDocumentA4PDF } from "#app/print/documentPrint.service.js";
 
 const router = Router();
 
@@ -50,6 +51,29 @@ router.get(
       `inline; filename="delivery-${req.params.id}.pdf"`
     );
     res.send(pdf);
+  }
+);
+
+/**
+ * ✅ NEW: พิมพ์เอกสารจาก Document โดยตรง (A4)
+ * ใช้กับเอกสารส่งสินค้าที่สร้างจาก /api/docs/delivery/*
+ */
+router.get(
+  "/document/:id/pdf",
+  requireAuth,
+  requireRole("ADMIN", "STAFF"),
+  async (req, res, next) => {
+    try {
+      const pdf = await renderDocumentA4PDF(req.params.id);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="document-${req.params.id}.pdf"`
+      );
+      return res.send(pdf);
+    } catch (err) {
+      next(err);
+    }
   }
 );
 
