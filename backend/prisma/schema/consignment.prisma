@@ -25,6 +25,7 @@ model ConsignmentPartner {
   bankAccounts PartnerBankAccount[]
   aliases      HeadquartersAlias[]
   preferences  PartnerDocPreference[]
+  deliveryDocTemplate     ConsignDeliveryDocTemplate @default(CAT_ONLY)
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

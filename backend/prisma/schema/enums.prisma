@@ -83,3 +83,8 @@ enum PartyKind {
   CONSIGNMENT
   CUSTOMER
 }
+
+enum ConsignDeliveryDocTemplate {
+  CAT_ONLY       // ใช้หมวดร้านฝากขาย
+  CODE_AND_CAT   // ใช้รหัสและหมวดร้านฝากขาย
+}

@@ -1,3 +1,5 @@
+// client/src/pages/delivery/consignment/ConsignmentDelivery.jsx
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/store/authStore";
@@ -11,6 +13,33 @@ import BarcodeScannerModal from "@/components/BarcodeScannerModal";
 import { Search, ScanLine, Plus, Trash2, Printer, Download, RefreshCcw } from "lucide-react";
 
 const money = (v) => new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
+
+// ===== helpers: ทำให้ดึง Array ได้เสมอ + ตรวจ HTML ผิดปลายทาง + normalize field =====
+const isHTML = (data) => typeof data === "string" && /^\s*<!doctype html>/i.test(data);
+const arrayify = (resData) => {
+  if (Array.isArray(resData)) return resData;
+  if (resData && typeof resData === "object") {
+    for (const k of ["items", "data", "rows", "result", "results", "list"]) {
+      if (Array.isArray(resData[k])) return resData[k];
+    }
+  }
+  return [];
+};
+const normalizeBranch = (b) => ({
+  // เก็บของเดิมไว้ทั้งหมด (กระทบ UI เดิมน้อยที่สุด)
+  ...b,
+  id: b?.id ?? b?.branchId ?? b?.uid ?? null,
+  name: b?.name ?? b?.branchName ?? b?.title ?? b?.displayName ?? "",
+  code: b?.code ?? b?.shortCode ?? "",
+  isMain: Boolean(b?.isMain ?? b?.main),
+  isMyBranch: Boolean(b?.isMyBranch),
+});
+const normalizePartner = (p) => ({
+  ...p,
+  id: p?.id ?? p?.partnerId ?? p?.uid ?? null,
+  name: p?.name ?? p?.partnerName ?? p?.title ?? p?.displayName ?? "",
+  code: p?.code ?? p?.partnerCode ?? "",
+});
 
 export default function ConsignmentDeliveryPage() {
   const user = useAuthStore((s) => s.user);
@@ -28,27 +57,59 @@ export default function ConsignmentDeliveryPage() {
   const [fromBranchId, setFromBranchId] = useState(null);
   const [toBranchId, setToBranchId] = useState(null);
   const [toPartnerId, setToPartnerId] = useState(null);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaError, setMetaError] = useState("");
 
   useEffect(() => {
     (async () => {
-      const [brRes, ptRes] = await Promise.all([
-        api.get("/api/branches"),
-        api.get("/api/consignment/partners", { params: { page: 1, pageSize: 100 } }),
-      ]);
-      const brs = brRes?.data?.items || brRes?.data || [];
-      const pts = ptRes?.data?.items || ptRes?.data || [];
-      setBranches(brs);
-      setPartners(pts);
+      try {
+        setMetaLoading(true);
+        setMetaError("");
 
-      if (isAdmin) {
-        if (!fromBranchId && brs.length) setFromBranchId(brs[0].id);
-        if (!toPartnerId && pts.length) setToPartnerId(pts[0].id);
-        if (!toBranchId && brs.length) setToBranchId((brs.find((b) => b.isMain) || brs[0]).id);
-      } else if (isConsign) {
-        const myBranchId = user?.branchId || brs.find((b) => b.isMyBranch)?.id || brs[0]?.id || null;
-        setFromBranchId(myBranchId);
-        const main = brs.find((b) => b.isMain) || brs[0];
-        setToBranchId(main?.id || null);
+        const [brRes, ptRes] = await Promise.all([
+          api.get("/api/branches"),
+          api.get("/api/consignment/partners", { params: { page: 1, pageSize: 100 } }),
+        ]);
+
+        // กันกรณีผิดปลายทาง (ได้ index.html)
+        if (isHTML(brRes?.data)) throw new Error("API /api/branches ส่ง HTML กลับมา (ปลายทางไม่ใช่ JSON)");
+        if (isHTML(ptRes?.data)) throw new Error("API /api/consignment/partners ส่ง HTML กลับมา (ปลายทางไม่ใช่ JSON)");
+
+        // รองรับได้ทั้ง {items:[]} หรือ [] ตรงๆ
+        const brsRaw = arrayify(brRes?.data);
+        const ptsRaw = arrayify(ptRes?.data);
+
+        const brs = brsRaw.map(normalizeBranch).filter((b) => b.id != null);
+        const pts = ptsRaw.map(normalizePartner).filter((p) => p.id != null);
+
+        setBranches(brs);
+        setPartners(pts);
+
+        // ตั้งค่า default selection ตามบทบาท (คง logic เดิม)
+        if (isAdmin) {
+          if (!fromBranchId && brs.length) setFromBranchId(brs[0].id);
+          if (!toPartnerId && pts.length) setToPartnerId(pts[0].id);
+          if (!toBranchId && brs.length) {
+            const main = brs.find((b) => b.isMain) || brs[0];
+            setToBranchId(main?.id || null);
+          }
+        } else if (isConsign) {
+          const myBranchId =
+            user?.branchId ||
+            brs.find((b) => b.isMyBranch)?.id ||
+            brs[0]?.id ||
+            null;
+          setFromBranchId(myBranchId);
+          const main = brs.find((b) => b.isMain) || brs[0];
+          setToBranchId(main?.id || null);
+        }
+      } catch (err) {
+        console.error("[ConsignmentDelivery] meta load error:", err);
+        setMetaError(err?.response?.data?.message || err?.message || "โหลดข้อมูลสาขา/ร้านฝากขายไม่สำเร็จ");
+        setBranches([]);
+        setPartners([]);
+      } finally {
+        setMetaLoading(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,15 +134,18 @@ export default function ConsignmentDeliveryPage() {
     try {
       if (lineMode === "ITEM") {
         const { data } = await api.get("/api/products/search", { params: { q, page: 1, pageSize: 50 } });
-        setResults(data?.items || data || []);
+        setResults(arrayify(data));
       } else {
         const { data } = await api.get(`/api/consignment/partners/${toPartnerId}/categories`, { params: { q, page: 1, pageSize: 50 } });
-        const cats = data?.items || [];
+        const cats = arrayify(data);
         const merged = [];
+        // NOTE: ถ้าต้องการปรับเป็น parallel ก็ทำได้ แต่คงโค้ดเดิมไว้
         for (const c of cats) {
           const r = await api.get(`/api/consignment/categories/${c.id}/products`);
-          const items = r?.data?.items || r?.data || [];
-          items.forEach((p) => merged.push({ ...p, __cat: { id: c.id, code: c.code, name: c.name } }));
+          const items = arrayify(r?.data);
+          items.forEach((p) =>
+            merged.push({ ...p, __cat: { id: c.id, code: c.code, name: c.name } })
+          );
         }
         setResults(merged);
       }
@@ -161,7 +225,7 @@ export default function ConsignmentDeliveryPage() {
         note: lineMode === "CATEGORY" ? "ส่งแบบอิงหมวดร้านฝากขาย" : "ส่งแบบอิงสินค้า",
       };
       const res = await api.post("/api/deliveries/consignment", payload);
-      const doc = res?.data?.doc || null;
+      const doc = res?.data?.doc || res?.data || null;
       setCreatedDoc(doc);
       await loadDocs();
       setLines([]);
@@ -180,7 +244,7 @@ export default function ConsignmentDeliveryPage() {
     setDocsLoading(true);
     try {
       const { data } = await api.get("/api/deliveries/consignment", { params: { q: docQ, page: 1, pageSize: 30 } });
-      setDocs(data?.items || data || []);
+      setDocs(arrayify(data));
     } finally {
       setDocsLoading(false);
     }
@@ -236,12 +300,17 @@ export default function ConsignmentDeliveryPage() {
                 value={fromBranchId || ""}
                 onChange={(e) => setFromBranchId(Number(e.target.value) || null)}
               >
+                <option value="">— เลือกสาขา —</option>
                 {branches
                   .filter((b) => (branchQ ? `${b.code ?? ""} ${b.name ?? ""}`.toLowerCase().includes(branchQ.toLowerCase()) : true))
                   .map((b) => (
-                    <option key={b.id} value={b.id}>{b.code ? `[${b.code}] ` : ""}{b.name}</option>
+                    <option key={b.id} value={b.id}>
+                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
+                    </option>
                   ))}
               </select>
+              {metaLoading && <div className="text-xs text-slate-500">กำลังโหลดรายการสาขา...</div>}
+              {metaError && <div className="text-xs text-red-600">{metaError}</div>}
             </div>
 
             {/* to (partner or branch) */}
@@ -258,12 +327,17 @@ export default function ConsignmentDeliveryPage() {
                   value={toPartnerId || ""}
                   onChange={(e) => setToPartnerId(Number(e.target.value) || null)}
                 >
+                  <option value="">— เลือกร้านฝากขาย —</option>
                   {partners
                     .filter((p) => (partnerQ ? `${p.code ?? ""} ${p.name ?? ""}`.toLowerCase().includes(partnerQ.toLowerCase()) : true))
                     .map((p) => (
-                      <option key={p.id} value={p.id}>{p.code ? `[${p.code}] ` : ""}{p.name}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.code ? `[${p.code}] ` : ""}{p.name}
+                      </option>
                     ))}
                 </select>
+                {metaLoading && <div className="text-xs text-slate-500">กำลังโหลดร้านฝากขาย...</div>}
+                {metaError && <div className="text-xs text-red-600">{metaError}</div>}
               </div>
             ) : (
               <div className="grid gap-2">
@@ -274,10 +348,15 @@ export default function ConsignmentDeliveryPage() {
                   value={toBranchId || ""}
                   onChange={(e) => setToBranchId(Number(e.target.value) || null)}
                 >
+                  <option value="">— เลือกสาขา —</option>
                   {branches.map((b) => (
-                    <option key={b.id} value={b.id}>{b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}</option>
+                    <option key={b.id} value={b.id}>
+                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
+                    </option>
                   ))}
                 </select>
+                {metaLoading && <div className="text-xs text-slate-500">กำลังโหลดรายการสาขา...</div>}
+                {metaError && <div className="text-xs text-red-600">{metaError}</div>}
               </div>
             )}
           </div>
