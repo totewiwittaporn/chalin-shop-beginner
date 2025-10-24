@@ -17,15 +17,17 @@ model ConsignmentPartner {
   status            PartnerStatus @default(ACTIVE)
 
   // ตั้งชื่อ relation ชัดเจน
-  shops        ConsignmentCategory[]    @relation("PartnerCategories")
-  maps         ConsignmentCategoryMap[]
-  inventories  ConsignmentInventory[]
-  documents    Document[]
-  users        User[]
-  bankAccounts PartnerBankAccount[]
-  aliases      HeadquartersAlias[]
-  preferences  PartnerDocPreference[]
-  deliveryDocTemplate     ConsignDeliveryDocTemplate @default(CAT_ONLY)
+  shops               ConsignmentCategory[]      @relation("PartnerCategories")
+  maps                ConsignmentCategoryMap[]
+  inventories         ConsignmentInventory[]
+  documents           Document[]
+  users               User[]
+  bankAccounts        PartnerBankAccount[]
+  aliases             HeadquartersAlias[]
+  preferences         PartnerDocPreference[]
+  deliveryDocTemplate ConsignDeliveryDocTemplate @default(CAT_ONLY)
+
+  deliveries ConsignmentDelivery[] @relation("ConsignDeliveryToPartner")
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -50,9 +52,10 @@ model ConsignmentCategory {
   // ใส่ชื่อ relation ให้ตรงกับคู่ใน ConsignmentCategoryMap
   maps ConsignmentCategoryMap[] @relation("CategoryMaps")
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  DocumentItem DocumentItem[]
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  DocumentItem            DocumentItem[]
+  ConsignmentDeliveryLine ConsignmentDeliveryLine[]
 
   /// ไม่ให้ code ซ้ำในร้านเดียวกัน
   @@unique([partnerId, code])

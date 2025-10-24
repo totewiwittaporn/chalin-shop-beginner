@@ -1,0 +1,106 @@
+// prisma/schema/deliveries.prisma
+
+model BranchDelivery {
+  id     Int            @id @default(autoincrement())
+  code   String         @unique
+  date   DateTime       @default(now())
+  status DeliveryStatus @default(DRAFT)
+
+  fromBranchId Int
+  toBranchId   Int
+
+  // ตั้งชื่อ relation คู่กันให้ชัด
+  fromBranch Branch @relation("BranchDeliveryFrom", fields: [fromBranchId], references: [id])
+  toBranch   Branch @relation("BranchDeliveryTo", fields: [toBranchId], references: [id])
+
+  note  String?
+  total Decimal @db.Decimal(12, 2)
+
+  lines BranchDeliveryLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([fromBranchId, toBranchId])
+}
+
+model BranchDeliveryLine {
+  id         Int            @id @default(autoincrement())
+  deliveryId Int
+  delivery   BranchDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  qty       Decimal @db.Decimal(12, 3)
+  unitPrice Decimal @db.Decimal(12, 2)
+  amount    Decimal @db.Decimal(12, 2)
+
+  // เผื่อ snapshot ชื่อแสดงผล
+  displayName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deliveryId])
+  @@index([productId])
+}
+
+model ConsignmentDelivery {
+  id     Int            @id @default(autoincrement())
+  code   String         @unique
+  date   DateTime       @default(now())
+  status DeliveryStatus @default(DRAFT)
+
+  fromBranchId Int
+  fromBranch   Branch @relation("ConsignDeliveryFrom", fields: [fromBranchId], references: [id])
+
+  // โหมด: "SEND" (ไปพาร์ตเนอร์) หรือ "RETURN" (กลับสาขา)
+  mode String // "SEND" | "RETURN"
+
+  toPartnerId Int?
+  toPartner   ConsignmentPartner? @relation("ConsignDeliveryToPartner", fields: [toPartnerId], references: [id])
+
+  toBranchId Int?
+  toBranch   Branch? @relation("ConsignDeliveryReturnTo", fields: [toBranchId], references: [id])
+
+  note  String?
+  total Decimal @db.Decimal(12, 2)
+
+  lines ConsignmentDeliveryLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([fromBranchId])
+  @@index([toPartnerId])
+  @@index([toBranchId])
+}
+
+model ConsignmentDeliveryLine {
+  id         Int                 @id @default(autoincrement())
+  deliveryId Int
+  delivery   ConsignmentDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  qty       Decimal @db.Decimal(12, 3)
+  unitPrice Decimal @db.Decimal(12, 2)
+  amount    Decimal @db.Decimal(12, 2)
+
+  // Snapshot ทาง consignment
+  partnerCategoryId Int?
+  partnerCategory   ConsignmentCategory? @relation(fields: [partnerCategoryId], references: [id])
+  displayName       String?
+  basePrice         Decimal?             @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deliveryId])
+  @@index([productId])
+  @@index([partnerCategoryId])
+}

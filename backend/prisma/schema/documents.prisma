@@ -94,24 +94,3 @@ model DocumentPayment {
   @@index([documentId])
   @@index([paidAt])
 }
-
-model ConsignDeliveryLine {
-  id                   Int      @id @default(autoincrement())
-  documentId           Int
-  productId            Int
-  qty                  Decimal  @db.Decimal(10,2)
-
-  // ราคาที่ "ใช้จริง ณ ตอนทำรายการ" (ต้องมีเสมอ)
-  unitPrice            Decimal  @db.Decimal(10,2)
-
-  // ข้อมูลอ้างอิง (optional แต่แนะนำ)
-  basePrice            Decimal? @db.Decimal(10,2)  // ราคาขายจริงของสินค้า ณ ตอนนั้น
-  partnerPriceUsed     Boolean  @default(false)    // true = ใช้ราคาฝากขายเฉพาะร้าน
-
-  // snapshot สำหรับการ render ตามหมวด
-  partnerCategoryId    Int?
-  partnerCategoryCode  String?
-  partnerCategoryName  String?
-
-  // ...relation กับ Document, Product ตามเดิม...
-}

@@ -1,17 +1,10 @@
-import { Router } from "express";
-import { requireAuth, requireRole } from "#app/middleware/auth.js";
-import {
-  createDelivery,
-  listDeliveries,
-  getDelivery,
-  receiveDelivery,
-} from "#app/controllers/deliveries/branchDeliveries.controller.js";
+import { Router } from 'express';
+import { list, get, create, updateStatus } from '#app/controllers/deliveries/branchDeliveries.controller.js';
 
-const router = Router();
+const r = Router();
+r.get('/', list);
+r.get('/:id', get);
+r.post('/', create);
+r.patch('/:id/status', updateStatus);
 
-router.post("/", requireAuth, requireRole("ADMIN", "STAFF"), createDelivery);
-router.get("/", requireAuth, requireRole("ADMIN", "STAFF"), listDeliveries);
-router.get("/:id", requireAuth, requireRole("ADMIN", "STAFF"), getDelivery);
-router.patch("/:id/receive", requireAuth, receiveDelivery);
-
-export default router;
+export default r;

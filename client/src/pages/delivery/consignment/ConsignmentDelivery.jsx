@@ -1,20 +1,16 @@
 // client/src/pages/delivery/consignment/ConsignmentDelivery.jsx
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/store/authStore";
 import GradientPanel from "@/components/theme/GradientPanel";
-import GlassModal from "@/components/theme/GlassModal";
 import Table from "@/components/ui/Table";
 import Button from "@/components/ui/Button";
-import PrintDoc from "@/components/docs/PrintDoc";
-import { DOC_TYPES } from "@/config/docTemplates";
 import BarcodeScannerModal from "@/components/BarcodeScannerModal";
-import { Search, ScanLine, Plus, Trash2, Printer, Download, RefreshCcw } from "lucide-react";
+import { Search, ScanLine, Plus, Trash2, RefreshCcw } from "lucide-react";
 
-const money = (v) => new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
+const money = (v) =>
+  new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
 
-// ===== helpers: ทำให้ดึง Array ได้เสมอ + ตรวจ HTML ผิดปลายทาง + normalize field =====
 const isHTML = (data) => typeof data === "string" && /^\s*<!doctype html>/i.test(data);
 const arrayify = (resData) => {
   if (Array.isArray(resData)) return resData;
@@ -26,7 +22,6 @@ const arrayify = (resData) => {
   return [];
 };
 const normalizeBranch = (b) => ({
-  // เก็บของเดิมไว้ทั้งหมด (กระทบ UI เดิมน้อยที่สุด)
   ...b,
   id: b?.id ?? b?.branchId ?? b?.uid ?? null,
   name: b?.name ?? b?.branchName ?? b?.title ?? b?.displayName ?? "",
@@ -47,7 +42,8 @@ export default function ConsignmentDeliveryPage() {
   const isAdmin = role === "ADMIN";
   const isConsign = role === "CONSIGN" || role === "CONSIGNMENT" || role === "CONSIGN_PARTNER";
 
-  const [actionType, setActionType] = useState(isConsign ? "RETURN" : "SEND");
+  // โหมดทำรายการ
+  const [mode, setMode] = useState(isConsign ? "RETURN" : "SEND"); // 'SEND' | 'RETURN'
 
   // [1] เลือกต้นทาง/ปลายทาง
   const [branches, setBranches] = useState([]);
@@ -71,21 +67,15 @@ export default function ConsignmentDeliveryPage() {
           api.get("/api/consignment/partners", { params: { page: 1, pageSize: 100 } }),
         ]);
 
-        // กันกรณีผิดปลายทาง (ได้ index.html)
         if (isHTML(brRes?.data)) throw new Error("API /api/branches ส่ง HTML กลับมา (ปลายทางไม่ใช่ JSON)");
         if (isHTML(ptRes?.data)) throw new Error("API /api/consignment/partners ส่ง HTML กลับมา (ปลายทางไม่ใช่ JSON)");
 
-        // รองรับได้ทั้ง {items:[]} หรือ [] ตรงๆ
-        const brsRaw = arrayify(brRes?.data);
-        const ptsRaw = arrayify(ptRes?.data);
-
-        const brs = brsRaw.map(normalizeBranch).filter((b) => b.id != null);
-        const pts = ptsRaw.map(normalizePartner).filter((p) => p.id != null);
+        const brs = arrayify(brRes?.data).map(normalizeBranch).filter((b) => b.id != null);
+        const pts = arrayify(ptRes?.data).map(normalizePartner).filter((p) => p.id != null);
 
         setBranches(brs);
         setPartners(pts);
 
-        // ตั้งค่า default selection ตามบทบาท (คง logic เดิม)
         if (isAdmin) {
           if (!fromBranchId && brs.length) setFromBranchId(brs[0].id);
           if (!toPartnerId && pts.length) setToPartnerId(pts[0].id);
@@ -115,40 +105,23 @@ export default function ConsignmentDeliveryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // [2] ค้นหา
-  const [lineMode, setLineMode] = useState("ITEM"); // ITEM | CATEGORY
+  // [2] ค้นหาสินค้า (ชื่อ/บาร์โค้ด)
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
+
+  // 🔧 Scanner state (ประกาศครั้งเดียวที่นี่)
   const [openScanner, setOpenScanner] = useState(false);
   const lastScanTimeRef = useRef(0);
 
-  const canSearch = useMemo(() => {
-    if (lineMode === "ITEM") return true;
-    return !!toPartnerId; // CATEGORY ต้องมี partner
-  }, [lineMode, toPartnerId]);
+  const canSearch = useMemo(() => true, []);
 
   async function runSearch() {
     if (!canSearch) return;
     setSearching(true);
     try {
-      if (lineMode === "ITEM") {
-        const { data } = await api.get("/api/products/search", { params: { q, page: 1, pageSize: 50 } });
-        setResults(arrayify(data));
-      } else {
-        const { data } = await api.get(`/api/consignment/partners/${toPartnerId}/categories`, { params: { q, page: 1, pageSize: 50 } });
-        const cats = arrayify(data);
-        const merged = [];
-        // NOTE: ถ้าต้องการปรับเป็น parallel ก็ทำได้ แต่คงโค้ดเดิมไว้
-        for (const c of cats) {
-          const r = await api.get(`/api/consignment/categories/${c.id}/products`);
-          const items = arrayify(r?.data);
-          items.forEach((p) =>
-            merged.push({ ...p, __cat: { id: c.id, code: c.code, name: c.name } })
-          );
-        }
-        setResults(merged);
-      }
+      const { data } = await api.get("/api/products/search", { params: { q, page: 1, pageSize: 50 } });
+      setResults(arrayify(data));
     } finally {
       setSearching(false);
     }
@@ -158,29 +131,32 @@ export default function ConsignmentDeliveryPage() {
     const t = setTimeout(runSearch, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, lineMode, toPartnerId]);
+  }, [q]);
 
   // [3] ตะกร้า
   const [lines, setLines] = useState([]);
 
   function addLine(item) {
-    const exist = lines.find((l) => l.productId === item.id);
-    if (exist) {
-      setLines((prev) => prev.map((l) => (l.productId === item.id ? { ...l, qty: l.qty + 1 } : l)));
-    } else {
-      setLines((prev) => [
+    setLines((prev) => {
+      const idx = prev.findIndex((l) => l.productId === item.id);
+      const unitPrice = Number(item.salePrice ?? item.unitPrice ?? item.basePrice ?? 0);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], qty: next[idx].qty + 1, unitPrice: next[idx].unitPrice ?? unitPrice };
+        return next;
+      }
+      return [
         ...prev,
         {
           productId: item.id,
           barcode: item.barcode,
           name: item.name,
-          unitPrice: Number(item.salePrice || item.unitPrice || 0),
+          unitPrice,
           qty: 1,
-          categoryId: item.__cat?.id || null,
-          displayName: item.__cat ? item.name : undefined, // เผื่อ override
+          displayName: item.name,
         },
-      ]);
-    }
+      ];
+    });
   }
   function updateQty(productId, qty) {
     const qNum = Math.max(1, Number(qty || 1));
@@ -194,48 +170,44 @@ export default function ConsignmentDeliveryPage() {
   }
 
   const [saving, setSaving] = useState(false);
-  const [createdDoc, setCreatedDoc] = useState(null);
 
-  async function saveDocument() {
+  async function saveDocument(asDraft = false) {
     if (!lines.length) return alert("ยังไม่มีสินค้าในรายการ");
 
     if (isAdmin) {
-      if (actionType === "SEND" && (!fromBranchId || !toPartnerId)) return alert("โปรดเลือกสาขาต้นทางและร้านฝากขายปลายทาง");
-      if (actionType === "RETURN" && (!fromBranchId || !toBranchId)) return alert("โปรดเลือกสาขาต้นทางและสาขาปลายทาง");
+      if (mode === "SEND" && (!fromBranchId || !toPartnerId)) return alert("โปรดเลือกสาขาต้นทางและร้านฝากขายปลายทาง");
+      if (mode === "RETURN" && (!fromBranchId || !toBranchId)) return alert("โปรดเลือกสาขาต้นทางและสาขาปลายทาง");
     } else if (isConsign) {
-      if (actionType !== "RETURN") return alert("ผู้ใช้ CONSIGN ทำได้เฉพาะการคืนของเท่านั้น");
+      if (mode !== "RETURN") return alert("ผู้ใช้ CONSIGN ทำได้เฉพาะการคืนของเท่านั้น");
       if (!fromBranchId || !toBranchId) return alert("ไม่พบข้อมูลสาขาต้นทาง/ปลายทาง");
     }
 
     setSaving(true);
     try {
       const payload = {
-        actionType,
-        lineMode,
+        mode, // 'SEND' | 'RETURN'
         fromBranchId,
-        toPartnerId: actionType === "SEND" ? toPartnerId : null,
-        toBranchId: actionType === "RETURN" ? toBranchId : null,
-        lines: lines.map(({ productId, qty, unitPrice, categoryId, displayName }) => ({
+        toPartnerId: mode === "SEND" ? toPartnerId : null,
+        toBranchId: mode === "RETURN" ? toBranchId : null,
+        status: asDraft ? "DRAFT" : "SENT",
+        lines: lines.map(({ productId, qty, unitPrice, displayName }) => ({
           productId,
           qty,
           unitPrice,
-          categoryId,
           displayName,
         })),
-        note: lineMode === "CATEGORY" ? "ส่งแบบอิงหมวดร้านฝากขาย" : "ส่งแบบอิงสินค้า",
+        note: mode === "RETURN" ? "คืนสินค้าจากฝากขาย" : "ส่งสินค้าฝากขาย",
       };
-      const res = await api.post("/api/deliveries/consignment", payload);
-      const doc = res?.data?.doc || res?.data || null;
-      setCreatedDoc(doc);
+      await api.post("/api/consignment-deliveries", payload);
       await loadDocs();
       setLines([]);
-      alert("บันทึกใบส่งสินค้าเรียบร้อย");
+      alert(asDraft ? "บันทึกร่างเรียบร้อย" : "บันทึกใบส่งสินค้าเรียบร้อย");
     } finally {
       setSaving(false);
     }
   }
 
-  // [4] เอกสาร
+  // [4] เอกสาร (ประวัติ)
   const [docs, setDocs] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [docQ, setDocQ] = useState("");
@@ -243,13 +215,16 @@ export default function ConsignmentDeliveryPage() {
   async function loadDocs() {
     setDocsLoading(true);
     try {
-      const { data } = await api.get("/api/deliveries/consignment", { params: { q: docQ, page: 1, pageSize: 30 } });
-      setDocs(arrayify(data));
+      const { data } = await api.get("/api/consignment-deliveries", { params: { q: docQ, page: 1, pageSize: 30 } });
+      const arr = Array.isArray(data?.items) ? data.items : arrayify(data);
+      setDocs(arr);
     } finally {
       setDocsLoading(false);
     }
   }
-  useEffect(() => { loadDocs(); }, []);
+  useEffect(() => {
+    loadDocs();
+  }, []);
   useEffect(() => {
     const t = setTimeout(loadDocs, 300);
     return () => clearTimeout(t);
@@ -264,6 +239,22 @@ export default function ConsignmentDeliveryPage() {
     setOpenScanner(false);
   }
 
+  // UI helpers
+  function StatusChip({ status }) {
+    const st = String(status || "").toUpperCase();
+    if (st === "DRAFT")
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs">ร่าง</span>;
+    if (st === "SENT")
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs">ส่ง</span>;
+    if (st === "RECEIVED")
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-sky-100 text-sky-800 text-xs">รับ</span>;
+    if (st === "COMPLETED")
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-xs">เสร็จ</span>;
+    if (st === "CANCELLED")
+      return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-rose-100 text-rose-800 text-xs">ยกเลิก</span>;
+    return <span className="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs">{st || "-"}</span>;
+  }
+
   return (
     <div className="min-h-[calc(100vh-140px)] w-full p-4 sm:p-6 md:p-8">
       <div className="grid gap-6">
@@ -273,15 +264,15 @@ export default function ConsignmentDeliveryPage() {
           subtitle={isAdmin ? "ADMIN: เลือกสาขาต้นทาง-ปลายทางได้" : "CONSIGN: คืนสินค้าจากสาขาของคุณไปยังสาขาหลักเท่านั้น"}
           actions={
             <div className="flex items-center gap-2">
-              <label className="text-white/90 text-sm">โหมดเอกสาร</label>
+              <label className="text-white/90 text-sm">โหมดทำรายการ</label>
               <select
                 className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
                 disabled={isConsign}
-                value={actionType}
-                onChange={(e) => setActionType(e.target.value)}
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
               >
                 <option value="SEND">ส่งไปยังร้านฝากขาย</option>
-                <option value="RETURN">คืนกลับสาขาหลัก</option>
+                <option value="RETURN">รับคืนเข้าที่สาขา</option>
               </select>
             </div>
           }
@@ -292,7 +283,12 @@ export default function ConsignmentDeliveryPage() {
               <div className="text-sm font-medium text-slate-600">สาขาต้นทาง</div>
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-slate-400" />
-                <input className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none" placeholder="ค้นหาสาขา" value={branchQ} onChange={(e) => setBranchQ(e.target.value)} />
+                <input
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                  placeholder="ค้นหาสาขา"
+                  value={branchQ}
+                  onChange={(e) => setBranchQ(e.target.value)}
+                />
               </div>
               <select
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
@@ -302,10 +298,14 @@ export default function ConsignmentDeliveryPage() {
               >
                 <option value="">— เลือกสาขา —</option>
                 {branches
-                  .filter((b) => (branchQ ? `${b.code ?? ""} ${b.name ?? ""}`.toLowerCase().includes(branchQ.toLowerCase()) : true))
+                  .filter((b) =>
+                    branchQ ? `${b.code ?? ""} ${b.name ?? ""}`.toLowerCase().includes(branchQ.toLowerCase()) : true
+                  )
                   .map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
+                      {b.code ? `[${b.code}] ` : ""}
+                      {b.name}
+                      {b.isMain ? " (หลัก)" : ""}
                     </option>
                   ))}
               </select>
@@ -314,12 +314,17 @@ export default function ConsignmentDeliveryPage() {
             </div>
 
             {/* to (partner or branch) */}
-            {actionType === "SEND" ? (
+            {mode === "SEND" ? (
               <div className="grid gap-2">
                 <div className="text-sm font-medium text-slate-600">ปลายทาง: ร้านฝากขาย</div>
                 <div className="flex items-center gap-2">
                   <Search size={16} className="text-slate-400" />
-                  <input className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none" placeholder="ค้นหาร้านฝากขาย" value={partnerQ} onChange={(e) => setPartnerQ(e.target.value)} />
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                    placeholder="ค้นหาร้านฝากขาย"
+                    value={partnerQ}
+                    onChange={(e) => setPartnerQ(e.target.value)}
+                  />
                 </div>
                 <select
                   className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
@@ -329,10 +334,13 @@ export default function ConsignmentDeliveryPage() {
                 >
                   <option value="">— เลือกร้านฝากขาย —</option>
                   {partners
-                    .filter((p) => (partnerQ ? `${p.code ?? ""} ${p.name ?? ""}`.toLowerCase().includes(partnerQ.toLowerCase()) : true))
+                    .filter((p) =>
+                      partnerQ ? `${p.code ?? ""} ${p.name ?? ""}`.toLowerCase().includes(partnerQ.toLowerCase()) : true
+                    )
                     .map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.code ? `[${p.code}] ` : ""}{p.name}
+                        {p.code ? `[${p.code}] ` : ""}
+                        {p.name}
                       </option>
                     ))}
                 </select>
@@ -351,7 +359,9 @@ export default function ConsignmentDeliveryPage() {
                   <option value="">— เลือกสาขา —</option>
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}
+                      {b.code ? `[${b.code}] ` : ""}
+                      {b.name}
+                      {b.isMain ? " (หลัก)" : ""}
                     </option>
                   ))}
                 </select>
@@ -365,18 +375,12 @@ export default function ConsignmentDeliveryPage() {
         {/* STEP 2 */}
         <GradientPanel
           title="2) ค้นหาสินค้า"
-          subtitle={lineMode === "ITEM" ? "ค้นหาตามสินค้า (SKU/ชื่อ/บาร์โค้ด)" : "ค้นหาหมวดร้านฝากขาย แล้วเลือกสินค้าที่อยู่ในหมวดนั้น"}
+          subtitle="ค้นหาตาม SKU/ชื่อ/บาร์โค้ด — ระบบจะใช้ 'ชื่อสินค้า' เป็นหลัก"
           actions={
             <div className="flex items-center gap-2">
-              <select
-                className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
-                value={lineMode}
-                onChange={(e) => setLineMode(e.target.value)}
-              >
-                <option value="ITEM">โหมด ITEM (ชื่อสินค้าปกติ)</option>
-                <option value="CATEGORY">โหมด CATEGORY (ชื่อจากหมวดร้านฝากขาย)</option>
-              </select>
-              <Button kind="white" leftIcon={<ScanLine size={16} />} onClick={() => setOpenScanner(true)}>สแกนบาร์โค้ด</Button>
+              <Button kind="white" leftIcon={<ScanLine size={16} />} onClick={() => setOpenScanner(true)}>
+                สแกนบาร์โค้ด
+              </Button>
             </div>
           }
         >
@@ -384,11 +388,13 @@ export default function ConsignmentDeliveryPage() {
             <Search size={16} className="text-slate-400" />
             <input
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
-              placeholder={lineMode === "ITEM" ? "พิมพ์ชื่อ/บาร์โค้ดสินค้า" : "พิมพ์ชื่อหมวดของร้านฝากขาย"}
+              placeholder="พิมพ์ชื่อ/บาร์โค้ดสินค้า"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
-            <Button kind="success" onClick={runSearch} disabled={!canSearch || searching}>{searching ? "กำลังค้นหา..." : "ค้นหา"}</Button>
+            <Button kind="success" onClick={runSearch} disabled={!canSearch || searching}>
+              {searching ? "กำลังค้นหา..." : "ค้นหา"}
+            </Button>
           </div>
 
           <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -396,29 +402,30 @@ export default function ConsignmentDeliveryPage() {
               <Table.Head>
                 <Table.Tr>
                   <Table.Th className="w-[140px]">Barcode</Table.Th>
-                  <Table.Th>ชื่อสินค้า{lineMode === "CATEGORY" ? " / หมวด" : ""}</Table.Th>
+                  <Table.Th>ชื่อสินค้า</Table.Th>
                   <Table.Th className="w-[120px] text-right">ราคา</Table.Th>
                   <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
                 </Table.Tr>
               </Table.Head>
               <Table.Body loading={searching}>
                 {results.map((it) => (
-                  <Table.Tr key={`${it.id}-${it.__cat?.id || "item"}`}>
+                  <Table.Tr key={it.id}>
                     <Table.Td className="font-mono">{it.barcode || "-"}</Table.Td>
-                    <Table.Td>
-                      <div className="flex flex-col">
-                        <span>{it.name}</span>
-                        {it.__cat && <span className="text-xs text-slate-500">[{it.__cat.code || "-"}] {it.__cat.name}</span>}
-                      </div>
-                    </Table.Td>
-                    <Table.Td className="text-right">{money(it.salePrice ?? it.unitPrice ?? 0)}</Table.Td>
+                    <Table.Td>{it.name}</Table.Td>
+                    <Table.Td className="text-right">{money(it.salePrice ?? it.unitPrice ?? it.basePrice ?? 0)}</Table.Td>
                     <Table.Td className="text-right">
-                      <Button kind="success" size="sm" onClick={() => addLine(it)} leftIcon={<Plus size={14} />}>เพิ่ม</Button>
+                      <Button kind="success" size="sm" onClick={() => addLine(it)} leftIcon={<Plus size={14} />}>
+                        เพิ่ม
+                      </Button>
                     </Table.Td>
                   </Table.Tr>
                 ))}
                 {!searching && results.length === 0 && (
-                  <Table.Tr><Table.Td colSpan={4} className="text-center text-slate-500 py-6">ไม่มีผลลัพธ์</Table.Td></Table.Tr>
+                  <Table.Tr>
+                    <Table.Td colSpan={4} className="text-center text-slate-500 py-6">
+                      ไม่มีผลลัพธ์
+                    </Table.Td>
+                  </Table.Tr>
                 )}
               </Table.Body>
             </Table.Root>
@@ -431,7 +438,10 @@ export default function ConsignmentDeliveryPage() {
           actions={
             <div className="flex items-center gap-2">
               <Button kind="danger" onClick={clearLines}>ล้างรายการ</Button>
-              <Button kind="success" onClick={saveDocument} disabled={saving || !lines.length}>{saving ? "กำลังบันทึก..." : "บันทึกเอกสารส่งของ"}</Button>
+              <Button kind="white" onClick={() => saveDocument(true)} disabled={saving || !lines.length}>
+                {saving ? "กำลังบันทึก..." : "บันทึกร่าง"}
+              </Button>
+             
             </div>
           }
         >
@@ -451,12 +461,7 @@ export default function ConsignmentDeliveryPage() {
                 {lines.map((l) => (
                   <Table.Tr key={l.productId}>
                     <Table.Td className="font-mono">{l.barcode || "-"}</Table.Td>
-                    <Table.Td>
-                      <div className="flex flex-col">
-                        <span>{l.displayName || l.name}</span>
-                        {l.categoryId && <span className="text-xs text-slate-500">[CAT #{l.categoryId}]</span>}
-                      </div>
-                    </Table.Td>
+                    <Table.Td>{l.displayName || l.name}</Table.Td>
                     <Table.Td className="text-right">{money(l.unitPrice)}</Table.Td>
                     <Table.Td className="text-right">
                       <input
@@ -469,49 +474,41 @@ export default function ConsignmentDeliveryPage() {
                     </Table.Td>
                     <Table.Td className="text-right">{money(l.unitPrice * l.qty)}</Table.Td>
                     <Table.Td className="text-right">
-                      <Button kind="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={() => removeLine(l.productId)}>ลบ</Button>
+                      <Button kind="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={() => removeLine(l.productId)}>
+                        ลบ
+                      </Button>
                     </Table.Td>
                   </Table.Tr>
                 ))}
                 {lines.length === 0 && (
-                  <Table.Tr><Table.Td colSpan={6} className="text-center text-slate-500 py-6">ยังไม่มีสินค้าในรายการ</Table.Td></Table.Tr>
+                  <Table.Tr>
+                    <Table.Td colSpan={6} className="text-center text-slate-500 py-6">
+                      ยังไม่มีสินค้าในรายการ
+                    </Table.Td>
+                  </Table.Tr>
                 )}
               </Table.Body>
             </Table.Root>
           </div>
-
-          {createdDoc && (
-            <div className="mt-4 rounded-xl border border-slate-200 p-3">
-              <div className="text-sm font-medium text-slate-600 mb-2">เอกสารที่เพิ่งบันทึก</div>
-              <PrintDoc
-                doc={{
-                  header: {
-                    docType: DOC_TYPES.DELIVERY_CONSIGNMENT,
-                    docNo: createdDoc.docNo || createdDoc.no || "DLV-CN-XXXX",
-                    docDate: createdDoc.docDate || createdDoc.date || new Date().toISOString().slice(0, 10),
-                    title: actionType === "RETURN" ? "RETURN" : "DELIVERY",
-                  },
-                  issuer: createdDoc.issuer,
-                  recipient: createdDoc.recipient,
-                  lines: createdDoc.items || createdDoc.lines,
-                  money: createdDoc.money || { grand: createdDoc.total },
-                  payment: createdDoc.payment,
-                }}
-              />
-            </div>
-          )}
         </GradientPanel>
 
         {/* STEP 4 */}
         <GradientPanel
-          title="4) รายการใบส่งสินค้า"
-          subtitle="ค้นหาย้อนหลังและพิมพ์เอกสารได้"
+          title="4) รายการใบส่งสินค้า (Consignment)"
+          subtitle="ค้นหาย้อนหลัง และเปิดดูรายละเอียด/จัดการสถานะ"
           actions={
             <div className="flex items-center gap-2">
-              <Button kind="white" leftIcon={<RefreshCcw size={16} />} onClick={loadDocs}>รีเฟรช</Button>
+              <Button kind="white" leftIcon={<RefreshCcw size={16} />} onClick={loadDocs}>
+                รีเฟรช
+              </Button>
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-white/80" />
-                <input className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900" placeholder="ค้นหาเลขที่/คู่ค้า/สาขา" value={docQ} onChange={(e) => setDocQ(e.target.value)} />
+                <input
+                  className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
+                  placeholder="ค้นหาเลขที่/คู่ค้า/สาขา"
+                  value={docQ}
+                  onChange={(e) => setDocQ(e.target.value)}
+                />
               </div>
             </div>
           }
@@ -520,30 +517,113 @@ export default function ConsignmentDeliveryPage() {
             <Table.Root>
               <Table.Head>
                 <Table.Tr>
-                  <Table.Th className="w-[160px]">เลขที่เอกสาร</Table.Th>
+                  <Table.Th className="w-[160px]">เลขที่</Table.Th>
                   <Table.Th className="w-[120px]">วันที่</Table.Th>
-                  <Table.Th>ผู้รับ/ร้านฝากขาย</Table.Th>
+                  <Table.Th>ปลายทาง</Table.Th>
                   <Table.Th className="w-[140px] text-right">ยอดสุทธิ</Table.Th>
-                  <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
+                  <Table.Th className="w-[120px] text-center">สถานะ</Table.Th>
+                  <Table.Th className="w-[420px] text-right">เครื่องมือ</Table.Th>
                 </Table.Tr>
               </Table.Head>
               <Table.Body loading={docsLoading}>
-                {docs.map((d) => (
-                  <Table.Tr key={d.id}>
-                    <Table.Td className="font-mono">{d.docNo || d.no}</Table.Td>
-                    <Table.Td>{(d.docDate || d.date || "").slice(0, 10)}</Table.Td>
-                    <Table.Td>{d.recipient?.name || d.partnerName || "-"}</Table.Td>
-                    <Table.Td className="text-right">{money(d.money?.grand || d.total || 0)}</Table.Td>
-                    <Table.Td className="text-right">
-                      <div className="inline-flex gap-2">
-                        <Button size="sm" kind="white" leftIcon={<Printer size={14} />} onClick={() => window.open(`/api/deliveries/consignment/${d.id}/print`, "_blank")}>พิมพ์</Button>
-                        <Button size="sm" kind="white" leftIcon={<Download size={14} />} onClick={() => window.open(`/api/deliveries/consignment/${d.id}/print?format=pdf`, "_blank")}>PDF</Button>
-                      </div>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
+                {docs.map((d) => {
+                  const recipientName = d.toPartner?.name || d.toBranch?.name || d.recipient?.name || "-";
+                  const code = d.code || d.docNo || d.no || `CD-${d.id}`;
+                  const dateStr = (d.date || d.docDate || "").slice(0, 10);
+                  const total = d.total ?? d.money?.grand ?? 0;
+                  const status = String(d.status || "SENT").toUpperCase();
+
+                  return (
+                    <Table.Tr key={d.id}>
+                      <Table.Td className="font-mono">{code}</Table.Td>
+                      <Table.Td>{dateStr}</Table.Td>
+                      <Table.Td>{recipientName}</Table.Td>
+                      <Table.Td className="text-right">{money(total)}</Table.Td>
+                      <Table.Td className="text-center"><StatusChip status={status} /></Table.Td>
+                      <Table.Td className="text-right">
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          {/* ร่าง → ดูตัวอย่าง + ยืนยันส่ง */}
+                          {status === "DRAFT" && (
+                            <>
+                              <Button size="sm" kind="white" onClick={() => window.open(`/api/consignment-deliveries/${d.id}`, "_blank")}>
+                                ดูตัวอย่างเอกสาร
+                              </Button>
+                              <Button
+                                size="sm"
+                                kind="success"
+                                onClick={async () => {
+                                  await api.patch(`/api/consignment-deliveries/${d.id}/status`, { status: "SENT" });
+                                  await loadDocs();
+                                  alert("ยืนยันส่งเรียบร้อย");
+                                }}
+                              >
+                                ยืนยันส่ง
+                              </Button>
+                            </>
+                          )}
+
+                          {/* ส่ง → ดู/พิมพ์ + ยืนยันรับ */}
+                          {status === "SENT" && (
+                            <>
+                              <Button size="sm" kind="white" onClick={() => window.open(`/api/consignment-deliveries/${d.id}`, "_blank")}>
+                                ดู/พิมพ์ใบส่งสินค้า
+                              </Button>
+                              <Button
+                                size="sm"
+                                kind="success"
+                                onClick={async () => {
+                                  await api.patch(`/api/consignment-deliveries/${d.id}/confirm`, { items: [] });
+                                  await loadDocs();
+                                  alert("ยืนยันรับสินค้าแล้ว (สถานะเป็น 'รับ')");
+                                }}
+                              >
+                                ยืนยันรับ
+                              </Button>
+                            </>
+                          )}
+
+                          {/* รับ → ตรวจสอบ/แก้จำนวน + ปิดงานเป็น เสร็จ */}
+                          {status === "RECEIVED" && (
+                            <>
+                              <Button
+                                size="sm"
+                                kind="white"
+                                onClick={() => {
+                                  // TODO: modal ตรวจสอบ/แก้จำนวนจริง
+                                  alert("เร็ว ๆ นี้: หน้าต่างตรวจสอบ/แก้จำนวนจริงรายบรรทัด");
+                                }}
+                              >
+                                ตรวจสอบ/แก้จำนวน
+                              </Button>
+                              <Button
+                                size="sm"
+                                kind="success"
+                                onClick={async () => {
+                                  await api.patch(`/api/consignment-deliveries/${d.id}/status`, { status: "COMPLETED" });
+                                  await loadDocs();
+                                  alert("ปิดงานเป็น 'เสร็จ' แล้ว");
+                                }}
+                              >
+                                ปิดงาน → เสร็จ
+                              </Button>
+                            </>
+                          )}
+
+                          {/* เสร็จ → ดู/พิมพ์ */}
+                          {status === "COMPLETED" && (
+                            <Button size="sm" kind="white" onClick={() => window.open(`/api/consignment-deliveries/${d.id}`, "_blank")}>
+                              ดู/พิมพ์ใบส่งสินค้า
+                            </Button>
+                          )}
+                        </div>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
                 {!docsLoading && docs.length === 0 && (
-                  <Table.Tr><Table.Td colSpan={5} className="text-center text-slate-500 py-6">ไม่พบเอกสาร</Table.Td></Table.Tr>
+                  <Table.Tr>
+                    <Table.Td colSpan={6} className="text-center text-slate-500 py-6">ไม่พบรายการ</Table.Td>
+                  </Table.Tr>
                 )}
               </Table.Body>
             </Table.Root>
@@ -552,16 +632,6 @@ export default function ConsignmentDeliveryPage() {
       </div>
 
       <BarcodeScannerModal open={openScanner} onClose={() => setOpenScanner(false)} onDetected={onScanDetected} />
-
-      <GlassModal open={false} title="สรุปการทำงานของหน้า" onClose={() => {}}>
-        <ul className="list-disc pl-5 space-y-1 text-slate-700">
-          <li>ADMIN เลือกต้นทาง-ปลายทางได้อิสระ, CONSIGN ทำได้เฉพาะ RETURN (สาขาตัวเอง → สาขาหลัก)</li>
-          <li>โหมด ITEM: ค้นหาสินค้าปกติ (ชื่อ/บาร์โค้ด)</li>
-          <li>โหมด CATEGORY: ค้นหาหมวดของร้านฝากขาย แล้วเลือกสินค้าที่อยู่ในหมวดนั้น</li>
-          <li>เพิ่มสินค้าเข้ารายการ, กำหนดจำนวน, บันทึกเอกสาร</li>
-          <li>ดู/ค้นหาเอกสารย้อนหลังและพิมพ์ได้</li>
-        </ul>
-      </GlassModal>
     </div>
   );
 }

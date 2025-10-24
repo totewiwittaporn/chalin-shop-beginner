@@ -1,14 +1,19 @@
 // backend/src/routes/deliveries/consignmentDeliveries.routes.js
-// ESM version with `export default` for compatibility with `import X from ...`
+import { Router } from 'express';
+import {
+  list,
+  get,
+  create,
+  updateStatus,
+  confirmReceive,
+} from '#app/controllers/deliveries/consignmentDeliveries.controller.js';
 
-import { Router } from "express";
-import * as ctrl from "#app/controllers/deliveries/consignmentDeliveries.controller.js";
+const r = Router();
 
-const router = Router();
+r.get('/', list);
+r.get('/:id', get);
+r.post('/', create);
+r.patch('/:id/status', updateStatus);
+r.patch('/:id/confirm', confirmReceive);
 
-router.get("/", ctrl.list);
-router.get("/:id", ctrl.get);
-router.post("/", ctrl.create);
-
-// (print endpoint จะเพิ่มในสเต็ปถัดไป)
-export default router;
+export default r;

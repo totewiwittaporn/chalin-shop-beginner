@@ -85,6 +85,23 @@ enum PartyKind {
 }
 
 enum ConsignDeliveryDocTemplate {
-  CAT_ONLY       // ใช้หมวดร้านฝากขาย
-  CODE_AND_CAT   // ใช้รหัสและหมวดร้านฝากขาย
+  CAT_ONLY // ใช้หมวดร้านฝากขาย
+  CODE_AND_CAT // ใช้รหัสและหมวดร้านฝากขาย
+}
+
+enum DeliveryStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  CANCELLED
+}
+
+enum StockMove {
+  IN
+  OUT
+}
+
+enum StockLocationType {
+  BRANCH
+  CONSIGNMENT
 }

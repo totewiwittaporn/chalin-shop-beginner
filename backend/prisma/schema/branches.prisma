@@ -30,6 +30,12 @@ model Branch {
   StockCount   StockCount[]
   bankAccounts BranchBankAccount[]
 
+  branchDeliveriesFrom BranchDelivery[] @relation("BranchDeliveryFrom")
+  branchDeliveriesTo   BranchDelivery[] @relation("BranchDeliveryTo")
+
+  consignDeliveriesFrom ConsignmentDelivery[] @relation("ConsignDeliveryFrom")
+  consignDeliveriesTo   ConsignmentDelivery[] @relation("ConsignDeliveryReturnTo")
+
   // เอกสารโอนที่ “ออกจาก” สาขานี้
   transfersFrom Transfer[] @relation("TransferFromBranch")
 
