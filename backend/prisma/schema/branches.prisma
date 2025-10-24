@@ -37,7 +37,4 @@ model Branch {
   transfersTo  Transfer[]     @relation("TransferToBranch")
   Sale         Sale[]
   Headquarters Headquarters[]
-
-  consignmentDeliveriesFrom ConsignmentDelivery[] @relation("ConsignDeliveryFromBranch")
-  consignmentDeliveriesTo   ConsignmentDelivery[] @relation("ConsignDeliveryToBranch")
 }

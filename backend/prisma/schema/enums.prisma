@@ -83,20 +83,3 @@ enum PartyKind {
   CONSIGNMENT
   CUSTOMER
 }
-
-enum ConsignDeliveryDocTemplate {
-  CAT_ONLY
-  CODE_AND_CAT
-}
-
-enum ConsignDeliveryType {
-  SEND // ส่งไปยังร้านฝากขาย
-  RETURN // คืนกลับสาขาหลัก
-}
-
-enum ConsignDeliveryStatus {
-  DRAFT
-  SENT
-  RECEIVED
-  CANCELLED
-}

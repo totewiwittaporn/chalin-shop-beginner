@@ -3,17 +3,12 @@ import prisma from "#app/lib/prisma.js";
 
 /** แปลงสินค้าเป็นรูปแบบมาตรฐานที่ฝั่ง client ใช้ */
 function mapProduct(p) {
-  const cost = Number(p.costPrice ?? 0);
-  const sell = Number(p.salePrice ?? 0);
   return {
     id: p.id,
     name: p.name,
     barcode: p.barcode,
-    costPrice: cost,
-    salePrice: sell,   // ← ให้ salePrice ตรงๆ
-    price: sell,       // ← คง alias เดิมไว้กันของเก่าพัง
-    productTypeId: p.productTypeId ?? null,
-    stockQty: p.stockQty != null ? Number(p.stockQty) : undefined, // เผื่อมาจาก withStock
+    costPrice: Number(p.costPrice ?? 0),
+    price: Number(p.salePrice ?? 0),   // ใช้ salePrice เป็นราคาขาย
   };
 }
 
@@ -30,14 +25,7 @@ export async function searchProducts(q, { take = 20 } = {}) {
         // ถ้ามี sku ใน schema: { sku: { contains: query, mode: "insensitive" } }
       ],
     },
-    select: {
-      id: true,
-      name: true,
-      barcode: true,
-      costPrice: true,
-      salePrice: true,
-      productTypeId: true,
-    },
+    select: { id: true, name: true, barcode: true, costPrice: true, salePrice: true },
     orderBy: [{ name: "asc" }],
     take: Math.min(100, Number(take) || 20),
   });
@@ -65,14 +53,7 @@ export async function listProducts({ q = "", page = 1, pageSize = 20 } = {}) {
       orderBy: [{ name: "asc" }],
       skip,
       take,
-      select: {
-        id: true,
-        name: true,
-        barcode: true,
-        costPrice: true,
-        salePrice: true,
-        productTypeId: true,
-      },
+      select: { id: true, name: true, barcode: true, costPrice: true, salePrice: true },
     }),
     prisma.product.count({ where }),
   ]);
@@ -92,20 +73,18 @@ export async function getStockMapByBranch(branchId, productIds) {
     where: { branchId: Number(branchId), productId: { in: productIds } },
     select: { productId: true, qty: true },
   });
-  return new Map(rows.map((r) => [r.productId, Number(r.qty || 0)]));
+  return new Map(rows.map(r => [r.productId, Number(r.qty || 0)]));
 }
 
 /** ค้นหา + รวมสต็อกของ “สาขาที่เลือก” (ใช้กับ POS โดยตรง) */
 export async function searchProductsWithStock(q, branchId, { take = 20 } = {}) {
   const products = await searchProducts(q, { take });
-  if (!branchId || products.length === 0) {
-    return products.map((p) => ({ ...p, stockQty: null }));
-  }
+  if (!branchId || products.length === 0) return products.map(p => ({ ...p, stockQty: null }));
 
-  const ids = products.map((p) => p.id);
+  const ids = products.map(p => p.id);
   const stockMap = await getStockMapByBranch(branchId, ids);
 
-  return products.map((p) => ({
+  return products.map(p => ({
     ...p,
     stockQty: Number(stockMap.get(p.id) ?? 0),
   }));
@@ -113,54 +92,51 @@ export async function searchProductsWithStock(q, branchId, { take = 20 } = {}) {
 
 /** สร้างสินค้าใหม่ */
 export async function createProduct(data, { actor } = {}) {
+  // ตัวอย่าง policy: STAFF ใช้ branchId ของตัวเอง, ADMIN กรอกได้
   const payload = {
-    barcode: String(data.barcode ?? "").trim(),
-    name: String(data.name ?? "").trim(),
+    barcode: String(data.barcode).trim(),
+    name:    String(data.name).trim(),
     productTypeId: data.productTypeId ? Number(data.productTypeId) : null,
-    costPrice: data.costPrice != null ? Number(data.costPrice) : 0,
-    salePrice: data.salePrice != null ? Number(data.salePrice) : 0,
-    branchId: actor?.role === "STAFF" ? actor.branchId ?? null : data.branchId ?? null,
+    costPrice: Number(data.costPrice) || 0,
+    salePrice: Number(data.salePrice) || 0,
+    branchId: actor?.role === "STAFF" ? actor.branchId ?? null : (data.branchId ?? null),
   };
 
-  const created = await prisma.product.create({
-    data: payload,
-    select: {
-      id: true,
-      barcode: true,
-      name: true,
-      costPrice: true,
-      salePrice: true,
-      productTypeId: true,
-    },
-  });
-
-  return mapProduct(created);
+  const created = await prisma.product.create({ data: payload });
+  return {
+    id: created.id,
+    barcode: created.barcode,
+    name: created.name,
+    costPrice: Number(created.costPrice || 0),
+    salePrice: Number(created.salePrice || 0),
+    productTypeId: created.productTypeId,
+  };
 }
 
 /** แก้ไขสินค้า */
 export async function updateProduct(id, data) {
   const payload = {};
-  if (data.barcode !== undefined) payload.barcode = String(data.barcode ?? "").trim();
-  if (data.name !== undefined) payload.name = String(data.name ?? "").trim();
-  if (data.costPrice !== undefined) payload.costPrice = Number(data.costPrice) || 0;
-  if (data.salePrice !== undefined) payload.salePrice = Number(data.salePrice) || 0;
+  if (data.barcode !== undefined)    payload.barcode = String(data.barcode).trim();
+  if (data.name !== undefined)       payload.name    = String(data.name).trim();
+  if (data.costPrice !== undefined)  payload.costPrice = Number(data.costPrice) || 0;
+  if (data.salePrice !== undefined)  payload.salePrice = Number(data.salePrice) || 0;
   if (data.productTypeId !== undefined)
     payload.productTypeId = data.productTypeId ? Number(data.productTypeId) : null;
 
   const updated = await prisma.product.update({
     where: { id: Number(id) },
     data: payload,
-    select: {
-      id: true,
-      barcode: true,
-      name: true,
-      costPrice: true,
-      salePrice: true,
-      productTypeId: true,
-    },
+    select: { id: true, barcode: true, name: true, costPrice: true, salePrice: true, productTypeId: true },
   });
 
-  return mapProduct(updated);
+  return {
+    id: updated.id,
+    barcode: updated.barcode,
+    name: updated.name,
+    costPrice: Number(updated.costPrice || 0),
+    salePrice: Number(updated.salePrice || 0),
+    productTypeId: updated.productTypeId,
+  };
 }
 
 /** รายงานคงเหลือน้อย (ตัวอย่างจากไฟล์เดิมของคุณ) */
@@ -175,11 +151,7 @@ export async function listLowStock({ role, branchId, partnerId, lt = 10, take = 
       orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
       take,
     });
-    return rows.map((r) => ({
-      id: r.productId,
-      name: r.product?.name ?? null,
-      stockQty: Number(r.qty || 0),
-    }));
+    return rows.map(r => ({ id: r.productId, name: r.product?.name ?? null, stockQty: Number(r.qty || 0) }));
   }
 
   if (role === "STAFF" && branchId) {
@@ -189,11 +161,7 @@ export async function listLowStock({ role, branchId, partnerId, lt = 10, take = 
       orderBy: [{ qty: "asc" }, { product: { name: "asc" } }],
       take,
     });
-    return rows.map((r) => ({
-      id: r.productId,
-      name: r.product?.name ?? null,
-      stockQty: Number(r.qty || 0),
-    }));
+    return rows.map(r => ({ id: r.productId, name: r.product?.name ?? null, stockQty: Number(r.qty || 0) }));
   }
 
   // ADMIN หรือไม่มี branch เฉพาะ → รวมทุกสาขาแล้วสรุป
@@ -206,14 +174,13 @@ export async function listLowStock({ role, branchId, partnerId, lt = 10, take = 
 
   const sumByProduct = new Map();
   for (const r of rows) {
-    const cur =
-      sumByProduct.get(r.productId) || { id: r.productId, name: r.product?.name ?? null, stockQty: 0 };
+    const cur = sumByProduct.get(r.productId) || { id: r.productId, name: r.product?.name ?? null, stockQty: 0 };
     cur.stockQty += Number(r.qty || 0);
     sumByProduct.set(r.productId, cur);
   }
 
   return Array.from(sumByProduct.values())
-    .filter((it) => it.stockQty <= lt)
+    .filter(it => it.stockQty <= lt)
     .sort((a, b) => a.stockQty - b.stockQty || String(a.name).localeCompare(String(b.name)))
     .slice(0, take);
 }

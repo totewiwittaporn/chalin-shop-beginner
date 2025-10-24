@@ -74,6 +74,4 @@ export function mountProtectedRoutes(app) {
 
   // Print PDF
   app.use("/api/print", printRoutes);
-
-
 }

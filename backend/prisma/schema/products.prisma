@@ -39,8 +39,6 @@ model Product {
   TransferLine   TransferLine[]
   SaleItem       SaleItem[]
 
-  consignmentDeliveryLines ConsignmentDeliveryLine[]
-
   @@index([productTypeId])
   @@index([branchId])
   @@index([barcode])

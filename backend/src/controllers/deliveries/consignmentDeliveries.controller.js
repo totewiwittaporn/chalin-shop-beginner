@@ -1,94 +1,79 @@
 // backend/src/controllers/deliveries/consignmentDeliveries.controller.js
+// ESM version – แยก "ทำรายการ" ออกจาก "เอกสาร"
+// - รับ lines เป็นสินค้าอย่างเดียว [{ productId, qty }]
+// - คิดราคาแบบ 2 ชั้น (consignmentInventory.price > product.salePrice)
+// - Snapshot ฟิลด์สำคัญลงบรรทัดเอกสาร (unitPrice, basePrice, partnerPriceUsed, partnerCategory*)
+
 import prisma from "#app/lib/prisma.js";
 import { resolveConsignPrice } from "#app/services/price/resolveConsignPrice.js";
 import { resolvePartnerCategory } from "#app/services/consignment/categoryResolver.js";
 
-/** GET /api/deliveries/consignment?q=&page=&pageSize= */
+/**
+ * GET /api/deliveries/consignment
+ * Query: q, page, pageSize
+ */
 export async function list(req, res) {
   const { q = "", page = 1, pageSize = 30 } = req.query;
   const take = Math.min(Number(pageSize) || 30, 100);
   const skip = (Number(page) - 1) * take;
 
-  const where =
-    q?.trim() !== ""
-      ? {
-          OR: [
-            { code: { contains: String(q), mode: "insensitive" } },
-            { toPartner: { name: { contains: String(q), mode: "insensitive" } } },
-            { recipientName: { contains: String(q), mode: "insensitive" } },
-          ],
-        }
-      : {};
+  const where = q
+    ? {
+        OR: [
+          { docNo: { contains: String(q), mode: "insensitive" } },
+          { partner: { name: { contains: String(q), mode: "insensitive" } } },
+          { recipientName: { contains: String(q), mode: "insensitive" } },
+        ],
+      }
+    : {};
 
   const [items, total] = await Promise.all([
-    prisma.consignmentDelivery.findMany({
+    prisma.consignDelivery.findMany({
       where,
-      orderBy: [{ date: "desc" }, { id: "desc" }],
-      include: { toPartner: true },
+      orderBy: { id: "desc" },
+      include: { partner: true },
       skip,
       take,
     }),
-    prisma.consignmentDelivery.count({ where }),
+    prisma.consignDelivery.count({ where }),
   ]);
 
-  const mapped = items.map((d) => ({
-    id: d.id,
-    docNo: d.code || `CDN-${d.id}`,
-    docDate: d.date,
-    partnerName: d.toPartner?.name || d.recipientName || null,
-    total: d.moneyGrand ?? null,
-  }));
-
-  res.json({ items: mapped, total, page: Number(page), pageSize: take });
+  res.json({ items, total, page: Number(page), pageSize: take });
 }
 
-/** GET /api/deliveries/consignment/:id */
+/**
+ * GET /api/deliveries/consignment/:id
+ */
 export async function get(req, res) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "invalid id" });
 
-  const d = await prisma.consignmentDelivery.findUnique({
+  const doc = await prisma.consignDelivery.findUnique({
     where: { id },
-    include: { toPartner: true, lines: true },
+    include: { lines: true, partner: true },
   });
-  if (!d) return res.status(404).json({ message: "Document not found" });
-
-  const doc = {
-    id: d.id,
-    docNo: d.code || `CDN-${d.id}`,
-    docDate: d.date,
-    partner: d.toPartner || null,
-    lines: d.lines,
-    money: { grand: d.moneyGrand ?? 0 },
-  };
+  if (!doc) return res.status(404).json({ message: "Document not found" });
   res.json(doc);
 }
 
-/** POST /api/deliveries/consignment
+/**
+ * POST /api/deliveries/consignment
  * body: {
- *   type: "SEND" | "RETURN",
  *   fromBranchId: number,
- *   toPartnerId?: number, // SEND
- *   toBranchId?: number,  // RETURN
- *   lines: [{ productId, qty }],
- *   notes?: string
+ *   toPartnerId?: number,
+ *   toBranchId?: number,
+ *   lines: [{ productId, qty }]
  * }
+ * หมายเหตุ: ทำรายการเลือก “สินค้า” อย่างเดียว (ไม่รับจากหมวด)
  */
 export async function create(req, res) {
-  const { type, fromBranchId, toPartnerId, toBranchId, lines = [], notes } = req.body;
-
-  if (type !== "SEND" && type !== "RETURN")
-    return res.status(400).json({ message: "type must be SEND or RETURN" });
+  const { fromBranchId, toPartnerId, toBranchId, lines = [] } = req.body;
 
   if (!fromBranchId) return res.status(400).json({ message: "fromBranchId is required" });
-  if (!Array.isArray(lines) || lines.length === 0)
-    return res.status(400).json({ message: "lines required" });
+  if (!Array.isArray(lines) || lines.length === 0) return res.status(400).json({ message: "lines required" });
+  if (!toPartnerId && !toBranchId) return res.status(400).json({ message: "toPartnerId or toBranchId required" });
 
-  if (type === "SEND" && !toPartnerId)
-    return res.status(400).json({ message: "toPartnerId required for SEND" });
-  if (type === "RETURN" && !toBranchId)
-    return res.status(400).json({ message: "toBranchId required for RETURN" });
-
+  // โหลดข้อมูลสินค้าเป็นชุดเดียว
   const ids = lines.map((l) => Number(l.productId)).filter(Boolean);
   const products = await prisma.product.findMany({
     where: { id: { in: ids } },
@@ -96,6 +81,7 @@ export async function create(req, res) {
   });
   const prodMap = new Map(products.map((p) => [p.id, p]));
 
+  // เตรียมบรรทัดพร้อม snapshot
   const prepared = [];
   for (const l of lines) {
     const productId = Number(l.productId);
@@ -104,12 +90,8 @@ export async function create(req, res) {
     if (!p) continue;
 
     const basePrice = Number(p.salePrice || 0);
-    const partnerId = type === "SEND" ? Number(toPartnerId) : null;
-    const unitPrice = partnerId
-      ? await resolveConsignPrice(partnerId, productId, basePrice)
-      : basePrice;
-
-    const cat = partnerId ? await resolvePartnerCategory(partnerId, productId) : null;
+    const unitPrice = await resolveConsignPrice(toPartnerId ?? null, productId, basePrice);
+    const cat = toPartnerId ? await resolvePartnerCategory(toPartnerId, productId) : null;
 
     prepared.push({
       productId,
@@ -120,59 +102,47 @@ export async function create(req, res) {
       partnerCategoryId: cat?.id ?? null,
       partnerCategoryCode: cat?.code ?? null,
       partnerCategoryName: cat?.name ?? null,
-      barcode: p.barcode ?? null,
-      name: p.name ?? null,
     });
   }
 
   if (prepared.length === 0) return res.status(400).json({ message: "no valid lines" });
 
-  const total = prepared.reduce(
-    (sum, l) => sum + Number(l.unitPrice) * Number(l.qty),
-    0
-  );
+  const total = prepared.reduce((sum, l) => sum + Number(l.unitPrice) * Number(l.qty), 0);
+  const docNo = await nextDocNo();
 
-  const code = await nextCode();
-
-  const created = await prisma.consignmentDelivery.create({
-    data: {
-      code,
-      date: new Date(),
-      type,
-      status: "DRAFT",
-      notes: notes || null,
-      fromBranchId: Number(fromBranchId),
-      toPartnerId: type === "SEND" ? Number(toPartnerId) : null,
-      toBranchId: type === "RETURN" ? Number(toBranchId) : null,
-      moneyGrand: total,
-      lines: { create: prepared },
-    },
-    include: { toPartner: true, lines: true },
+  const doc = await prisma.$transaction(async (tx) => {
+    const created = await tx.consignDelivery.create({
+      data: {
+        docNo,
+        docDate: new Date(),
+        fromBranchId: Number(fromBranchId),
+        toPartnerId: toPartnerId ? Number(toPartnerId) : null,
+        toBranchId: toBranchId ? Number(toBranchId) : null,
+        moneyGrand: total, // ปรับชื่อ field นี้ให้ตรง schema จริงของคุณ (เช่น total หรือ money.grand)
+        issuerName: null,  // TODO: snapshot ชื่อสาขาต้นทาง (ถ้าต้องการ)
+        recipientName: null, // TODO: snapshot ชื่อผู้รับ/ร้าน (ถ้าต้องการ)
+        lines: { create: prepared },
+      },
+      include: { lines: true, partner: true },
+    });
+    return created;
   });
-
-  const doc = {
-    id: created.id,
-    docNo: created.code || `CDN-${created.id}`,
-    docDate: created.date,
-    partner: created.toPartner || null,
-    lines: created.lines,
-    money: { grand: created.moneyGrand ?? 0 },
-  };
 
   res.json(doc);
 }
 
-async function nextCode() {
-  const prefix = "CDN";
-  const last = await prisma.consignmentDelivery.findFirst({
-    where: { code: { startsWith: prefix } },
+// Gen เลขที่เอกสารอย่างง่าย ปรับตามฟอร์แมตจริงได้
+async function nextDocNo() {
+  const prefix = "DLV-CN";
+  const last = await prisma.consignDelivery.findFirst({
+    where: { docNo: { startsWith: prefix } },
     orderBy: { id: "desc" },
-    select: { code: true },
+    select: { docNo: true },
   });
   let n = 1;
-  if (last?.code) {
-    const m = String(last.code).match(/(\d+)$/);
+  if (last?.docNo) {
+    const m = String(last.docNo).match(/(\d+)$/);
     if (m) n = Number(m[1]) + 1;
   }
-  return `${prefix}-${String(n).padStart(6, "0")}`;
+  return `${prefix}-${String(n).padStart(5, "0")}`;
 }

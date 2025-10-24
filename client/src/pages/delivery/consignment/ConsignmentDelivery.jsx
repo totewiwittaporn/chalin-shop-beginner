@@ -1,201 +1,136 @@
-// frontend/.../ConsignmentDelivery.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { useEffect, useMemo, useRef, useState } from "react";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/store/authStore";
 import GradientPanel from "@/components/theme/GradientPanel";
-import ConfirmClearModal from "@/components/delivery/consignment/ConfirmClearModal";
-import ConfirmSaveModal from "@/components/delivery/consignment/ConfirmSaveModal";
+import GlassModal from "@/components/theme/GlassModal";
+import Table from "@/components/ui/Table";
+import Button from "@/components/ui/Button";
+import PrintDoc from "@/components/docs/PrintDoc";
+import { DOC_TYPES } from "@/config/docTemplates";
+import BarcodeScannerModal from "@/components/BarcodeScannerModal";
+import { Search, ScanLine, Plus, Trash2, Printer, Download, RefreshCcw } from "lucide-react";
 
-// ★★★ FIX: ตั้ง baseURL ให้ถูกต้อง
-// ตั้งใน .env.development => VITE_API_BASE_URL="http://localhost:3000"
-// ถ้าไม่ได้ตั้ง proxy ใช้ค่านี้; ถ้าตั้ง proxy ไว้ใน vite.config ให้ปล่อยว่างได้
-const API_BASE =
-  import.meta?.env?.VITE_API_BASE_URL?.trim() ||
-  "/api"; // fallback ให้ยิงผ่าน proxy path "/api"
+const money = (v) => new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
 
-const api = axios.create({
-  baseURL: API_BASE,
-  // withCredentials: true, // ถ้าต้องส่งคุกกี้ ให้เปิดบรรทัดนี้
-});
+export default function ConsignmentDeliveryPage() {
+  const user = useAuthStore((s) => s.user);
+  const role = String(user?.role || "").toUpperCase();
+  const isAdmin = role === "ADMIN";
+  const isConsign = role === "CONSIGN" || role === "CONSIGNMENT" || role === "CONSIGN_PARTNER";
 
-// ช่วยตรวจว่า response กลายเป็น HTML ผิดปลายทางไหม
-const isHTML = (data) =>
-  typeof data === "string" && /^\s*<!doctype html>/i.test(data);
+  const [actionType, setActionType] = useState(isConsign ? "RETURN" : "SEND");
 
-// ดึง Array จาก response ได้แม้คีย์จะแตกต่างกัน
-const extractArray = (data) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.results)) return data.results;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.list)) return data.list;
-  if (Array.isArray(data?.branches)) return data.branches;
-  if (Array.isArray(data?.data)) return data.data;
-  if (data && typeof data === "object") {
-    const firstArray = Object.values(data).find((v) => Array.isArray(v));
-    if (Array.isArray(firstArray)) return firstArray;
-  }
-  return [];
-};
-
-const arrayify = (v) => extractArray(v ?? []);
-
-const normalizeBranch = (b) => {
-  if (!b || typeof b !== "object") return null;
-  const id = b.id ?? b.branchId ?? b.code ?? b.uid ?? null;
-  const name = b.name ?? b.branchName ?? b.title ?? b.displayName ?? b.code ?? null;
-  return id != null && name != null ? { id, name } : null;
-};
-
-const normalizePartner = (p) => {
-  if (!p || typeof p !== "object") return null;
-  const id = p.id ?? p.partnerId ?? p.code ?? p.uid ?? null;
-  const name = p.name ?? p.partnerName ?? p.title ?? p.displayName ?? p.code ?? null;
-  return id != null && name != null ? { id, name } : null;
-};
-
-function fmtMoney(v) {
-  try {
-    return Number(v || 0).toLocaleString("th-TH", { style: "currency", currency: "THB" });
-  } catch {
-    return `${v}`;
-  }
-}
-
-export default function ConsignmentDelivery() {
-  const isAdmin = true;
-  const isConsign = false;
-
-  // ฟอร์มเอกสาร
-  const [actionType, setActionType] = useState("SEND"); // SEND | RETURN
+  // [1] เลือกต้นทาง/ปลายทาง
+  const [branches, setBranches] = useState([]);
+  const [partners, setPartners] = useState([]);
+  const [branchQ, setBranchQ] = useState("");
+  const [partnerQ, setPartnerQ] = useState("");
   const [fromBranchId, setFromBranchId] = useState(null);
   const [toBranchId, setToBranchId] = useState(null);
   const [toPartnerId, setToPartnerId] = useState(null);
-  const [note, setNote] = useState("");
 
-  // ดรอปดาวน์
-  const [branches, setBranches] = useState([]); // [{id,name}]
-  const [partners, setPartners] = useState([]); // [{id,name}]
-  const [loadingMeta, setLoadingMeta] = useState(false);
-
-  // สินค้าในรายการ
-  const [lines, setLines] = useState([]); // [{ productId, barcode, name, salePrice/price, qty }]
-  const [saving, setSaving] = useState(false);
-
-  // modal
-  const [openClear, setOpenClear] = useState(false);
-  const [openSave, setOpenSave] = useState(false);
-
-  // ค้นหา
-  const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-
-  // โหลด branches & partners (ปลอดภัยกับทุกรูปแบบ response + กันกรณีได้ HTML)
   useEffect(() => {
     (async () => {
-      setLoadingMeta(true);
-      try {
-        const [b, p] = await Promise.all([
-          api.get("/branches"),
-          api.get("/consignment/partners"),
-        ]);
+      const [brRes, ptRes] = await Promise.all([
+        api.get("/api/branches"),
+        api.get("/api/consignment/partners", { params: { page: 1, pageSize: 100 } }),
+      ]);
+      const brs = brRes?.data?.items || brRes?.data || [];
+      const pts = ptRes?.data?.items || ptRes?.data || [];
+      setBranches(brs);
+      setPartners(pts);
 
-        if (isHTML(b?.data)) {
-          console.error("[ConsignmentDelivery] /branches returned HTML. Check API_BASE or proxy.");
-          setBranches([]);
-        } else {
-          const rawBranches = arrayify(b?.data);
-          const normBranches = rawBranches.map(normalizeBranch).filter(Boolean);
-          if (!normBranches.length) {
-            console.warn("[ConsignmentDelivery] branches: unexpected shape", b?.data);
-          }
-          setBranches(normBranches);
-        }
-
-        if (isHTML(p?.data)) {
-          console.error("[ConsignmentDelivery] /consignment/partners returned HTML. Check API_BASE or proxy.");
-          setPartners([]);
-        } else {
-          const rawPartners = arrayify(p?.data);
-          const normPartners = rawPartners.map(normalizePartner).filter(Boolean);
-          if (!normPartners.length) {
-            console.warn("[ConsignmentDelivery] partners: unexpected shape", p?.data);
-          }
-          setPartners(normPartners);
-        }
-      } catch (e) {
-        console.error(e);
-        setBranches([]);
-        setPartners([]);
-      } finally {
-        setLoadingMeta(false);
+      if (isAdmin) {
+        if (!fromBranchId && brs.length) setFromBranchId(brs[0].id);
+        if (!toPartnerId && pts.length) setToPartnerId(pts[0].id);
+        if (!toBranchId && brs.length) setToBranchId((brs.find((b) => b.isMain) || brs[0]).id);
+      } else if (isConsign) {
+        const myBranchId = user?.branchId || brs.find((b) => b.isMyBranch)?.id || brs[0]?.id || null;
+        setFromBranchId(myBranchId);
+        const main = brs.find((b) => b.isMain) || brs[0];
+        setToBranchId(main?.id || null);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ค้นหาสินค้า
-  async function doSearch() {
-    const q = String(searchText || "").trim();
-    if (!q) return setSearchResults([]);
+  // [2] ค้นหา
+  const [lineMode, setLineMode] = useState("ITEM"); // ITEM | CATEGORY
+  const [q, setQ] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState([]);
+  const [openScanner, setOpenScanner] = useState(false);
+  const lastScanTimeRef = useRef(0);
+
+  const canSearch = useMemo(() => {
+    if (lineMode === "ITEM") return true;
+    return !!toPartnerId; // CATEGORY ต้องมี partner
+  }, [lineMode, toPartnerId]);
+
+  async function runSearch() {
+    if (!canSearch) return;
+    setSearching(true);
     try {
-      const resp = await api.get("/products/search", { params: { q, take: 20 } });
-      if (isHTML(resp?.data)) {
-        console.error("[ConsignmentDelivery] /products/search returned HTML. Check API_BASE or proxy.");
-        setSearchResults([]);
-        return;
+      if (lineMode === "ITEM") {
+        const { data } = await api.get("/api/products/search", { params: { q, page: 1, pageSize: 50 } });
+        setResults(data?.items || data || []);
+      } else {
+        const { data } = await api.get(`/api/consignment/partners/${toPartnerId}/categories`, { params: { q, page: 1, pageSize: 50 } });
+        const cats = data?.items || [];
+        const merged = [];
+        for (const c of cats) {
+          const r = await api.get(`/api/consignment/categories/${c.id}/products`);
+          const items = r?.data?.items || r?.data || [];
+          items.forEach((p) => merged.push({ ...p, __cat: { id: c.id, code: c.code, name: c.name } }));
+        }
+        setResults(merged);
       }
-      const items = arrayify(resp?.data);
-      setSearchResults(items);
-    } catch (e) {
-      console.error(e);
+    } finally {
+      setSearching(false);
     }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      doSearch();
-    }
-  }
+  useEffect(() => {
+    const t = setTimeout(runSearch, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, lineMode, toPartnerId]);
 
-  function addLine(p, qty = 1) {
-    setLines((prev) => {
-      const exists = prev.find((x) => x.productId === p.id);
-      if (exists) {
-        return prev.map((x) =>
-          x.productId === p.id ? { ...x, qty: Number(x.qty || 0) + Number(qty || 1) } : x
-        );
-      }
-      return [
+  // [3] ตะกร้า
+  const [lines, setLines] = useState([]);
+
+  function addLine(item) {
+    const exist = lines.find((l) => l.productId === item.id);
+    if (exist) {
+      setLines((prev) => prev.map((l) => (l.productId === item.id ? { ...l, qty: l.qty + 1 } : l)));
+    } else {
+      setLines((prev) => [
         ...prev,
         {
-          productId: p.id,
-          barcode: p.barcode,
-          name: p.name,
-          // แสดงราคาใน UI — ราคาจริงคำนวณที่ฝั่งเซิร์ฟเวอร์ตอนบันทึก
-          salePrice: Number(p.salePrice ?? p.price ?? 0),
-          qty: Number(qty || 1),
+          productId: item.id,
+          barcode: item.barcode,
+          name: item.name,
+          unitPrice: Number(item.salePrice || item.unitPrice || 0),
+          qty: 1,
+          categoryId: item.__cat?.id || null,
+          displayName: item.__cat ? item.name : undefined, // เผื่อ override
         },
-      ];
-    });
+      ]);
+    }
   }
-
-  function removeLine(productId) {
-    setLines((prev) => prev.filter((x) => x.productId !== productId));
-  }
-
   function updateQty(productId, qty) {
-    setLines((prev) =>
-      prev.map((x) => (x.productId === productId ? { ...x, qty: Math.max(1, Number(qty || 1)) } : x))
-    );
+    const qNum = Math.max(1, Number(qty || 1));
+    setLines((prev) => prev.map((l) => (l.productId === productId ? { ...l, qty: qNum } : l)));
   }
-
+  function removeLine(productId) {
+    setLines((prev) => prev.filter((l) => l.productId !== productId));
+  }
   function clearLines() {
     setLines([]);
   }
 
-  const approxTotal = useMemo(() => {
-    return lines.reduce((sum, it) => sum + Number(it.qty || 0) * Number(it.salePrice ?? it.price ?? 0), 0);
-  }, [lines]);
+  const [saving, setSaving] = useState(false);
+  const [createdDoc, setCreatedDoc] = useState(null);
 
   async function saveDocument() {
     if (!lines.length) return alert("ยังไม่มีสินค้าในรายการ");
@@ -211,260 +146,343 @@ export default function ConsignmentDelivery() {
     setSaving(true);
     try {
       const payload = {
-        type: actionType,
+        actionType,
+        lineMode,
         fromBranchId,
         toPartnerId: actionType === "SEND" ? toPartnerId : null,
         toBranchId: actionType === "RETURN" ? toBranchId : null,
-        notes: note || null,
-        lines: lines.map((it) => ({ productId: it.productId, qty: Number(it.qty || 1) })),
+        lines: lines.map(({ productId, qty, unitPrice, categoryId, displayName }) => ({
+          productId,
+          qty,
+          unitPrice,
+          categoryId,
+          displayName,
+        })),
+        note: lineMode === "CATEGORY" ? "ส่งแบบอิงหมวดร้านฝากขาย" : "ส่งแบบอิงสินค้า",
       };
-      const res = await api.post("/deliveries/consignment", payload);
-      if (isHTML(res?.data)) throw new Error("API /deliveries/consignment returned HTML. Check API_BASE or proxy.");
-      const doc = res?.data || null;
-      if (!doc) throw new Error("ไม่สามารถบันทึกเอกสารได้");
-
+      const res = await api.post("/api/deliveries/consignment", payload);
+      const doc = res?.data?.doc || null;
+      setCreatedDoc(doc);
+      await loadDocs();
       setLines([]);
       alert("บันทึกใบส่งสินค้าเรียบร้อย");
-      // window.open(`${API_BASE}/deliveries/consignment/${doc.id}/print`, "_blank");
-    } catch (e) {
-      console.error(e);
-      alert(e?.response?.data?.message || e.message || "เกิดข้อผิดพลาดในการบันทึกเอกสาร");
     } finally {
       setSaving(false);
     }
   }
 
-  const fromBranchName = branches.find((b) => b.id === fromBranchId)?.name;
-  const toBranchName = branches.find((b) => b.id === toBranchId)?.name;
-  const toPartnerName = partners.find((p) => p.id === toPartnerId)?.name;
+  // [4] เอกสาร
+  const [docs, setDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docQ, setDocQ] = useState("");
+
+  async function loadDocs() {
+    setDocsLoading(true);
+    try {
+      const { data } = await api.get("/api/deliveries/consignment", { params: { q: docQ, page: 1, pageSize: 30 } });
+      setDocs(data?.items || data || []);
+    } finally {
+      setDocsLoading(false);
+    }
+  }
+  useEffect(() => { loadDocs(); }, []);
+  useEffect(() => {
+    const t = setTimeout(loadDocs, 300);
+    return () => clearTimeout(t);
+  }, [docQ]);
+
+  // สแกน
+  function onScanDetected(code) {
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 800) return;
+    lastScanTimeRef.current = now;
+    setQ(code || "");
+    setOpenScanner(false);
+  }
 
   return (
-    <div className="space-y-6">
-      <GradientPanel title="ส่งสินค้าร้านฝากขาย">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">ประเภทเอกสาร</label>
-            <select
-              className="w-full rounded-xl border-gray-300"
-              value={actionType}
-              onChange={(e) => setActionType(e.target.value)}
-            >
-              <option value="SEND">ส่งไปยังร้านฝากขาย</option>
-              <option value="RETURN">คืนเข้าสต็อกสาขา</option>
-            </select>
-          </div>
+    <div className="min-h-[calc(100vh-140px)] w-full p-4 sm:p-6 md:p-8">
+      <div className="grid gap-6">
+        {/* STEP 1 */}
+        <GradientPanel
+          title="1) เลือกร้านค้า / จุดส่ง-รับ"
+          subtitle={isAdmin ? "ADMIN: เลือกสาขาต้นทาง-ปลายทางได้" : "CONSIGN: คืนสินค้าจากสาขาของคุณไปยังสาขาหลักเท่านั้น"}
+          actions={
+            <div className="flex items-center gap-2">
+              <label className="text-white/90 text-sm">โหมดเอกสาร</label>
+              <select
+                className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
+                disabled={isConsign}
+                value={actionType}
+                onChange={(e) => setActionType(e.target.value)}
+              >
+                <option value="SEND">ส่งไปยังร้านฝากขาย</option>
+                <option value="RETURN">คืนกลับสาขาหลัก</option>
+              </select>
+            </div>
+          }
+        >
+          <div className="grid sm:grid-cols-2 gap-3">
+            {/* from */}
+            <div className="grid gap-2">
+              <div className="text-sm font-medium text-slate-600">สาขาต้นทาง</div>
+              <div className="flex items-center gap-2">
+                <Search size={16} className="text-slate-400" />
+                <input className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none" placeholder="ค้นหาสาขา" value={branchQ} onChange={(e) => setBranchQ(e.target.value)} />
+              </div>
+              <select
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                disabled={!isAdmin && isConsign}
+                value={fromBranchId || ""}
+                onChange={(e) => setFromBranchId(Number(e.target.value) || null)}
+              >
+                {branches
+                  .filter((b) => (branchQ ? `${b.code ?? ""} ${b.name ?? ""}`.toLowerCase().includes(branchQ.toLowerCase()) : true))
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>{b.code ? `[${b.code}] ` : ""}{b.name}</option>
+                  ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">หมายเหตุ</label>
+            {/* to (partner or branch) */}
+            {actionType === "SEND" ? (
+              <div className="grid gap-2">
+                <div className="text-sm font-medium text-slate-600">ปลายทาง: ร้านฝากขาย</div>
+                <div className="flex items-center gap-2">
+                  <Search size={16} className="text-slate-400" />
+                  <input className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none" placeholder="ค้นหาร้านฝากขาย" value={partnerQ} onChange={(e) => setPartnerQ(e.target.value)} />
+                </div>
+                <select
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                  disabled={!isAdmin}
+                  value={toPartnerId || ""}
+                  onChange={(e) => setToPartnerId(Number(e.target.value) || null)}
+                >
+                  {partners
+                    .filter((p) => (partnerQ ? `${p.code ?? ""} ${p.name ?? ""}`.toLowerCase().includes(partnerQ.toLowerCase()) : true))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>{p.code ? `[${p.code}] ` : ""}{p.name}</option>
+                    ))}
+                </select>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <div className="text-sm font-medium text-slate-600">ปลายทาง: สาขา</div>
+                <select
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+                  disabled={!isAdmin && isConsign}
+                  value={toBranchId || ""}
+                  onChange={(e) => setToBranchId(Number(e.target.value) || null)}
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.code ? `[${b.code}] ` : ""}{b.name}{b.isMain ? " (หลัก)" : ""}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </GradientPanel>
+
+        {/* STEP 2 */}
+        <GradientPanel
+          title="2) ค้นหาสินค้า"
+          subtitle={lineMode === "ITEM" ? "ค้นหาตามสินค้า (SKU/ชื่อ/บาร์โค้ด)" : "ค้นหาหมวดร้านฝากขาย แล้วเลือกสินค้าที่อยู่ในหมวดนั้น"}
+          actions={
+            <div className="flex items-center gap-2">
+              <select
+                className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
+                value={lineMode}
+                onChange={(e) => setLineMode(e.target.value)}
+              >
+                <option value="ITEM">โหมด ITEM (ชื่อสินค้าปกติ)</option>
+                <option value="CATEGORY">โหมด CATEGORY (ชื่อจากหมวดร้านฝากขาย)</option>
+              </select>
+              <Button kind="white" leftIcon={<ScanLine size={16} />} onClick={() => setOpenScanner(true)}>สแกนบาร์โค้ด</Button>
+            </div>
+          }
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Search size={16} className="text-slate-400" />
             <input
-              className="w-full rounded-xl border-gray-300"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="พิมพ์หมายเหตุ (ถ้ามี)"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none"
+              placeholder={lineMode === "ITEM" ? "พิมพ์ชื่อ/บาร์โค้ดสินค้า" : "พิมพ์ชื่อหมวดของร้านฝากขาย"}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
             />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">สาขาต้นทาง</label>
-            <select
-              className="w-full rounded-xl border-gray-300"
-              value={fromBranchId || ""}
-              onChange={(e) => setFromBranchId(Number(e.target.value) || null)}
-              disabled={loadingMeta}
-            >
-              <option value="">{loadingMeta ? "กำลังโหลด..." : "- เลือกสาขา -"}</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
+            <Button kind="success" onClick={runSearch} disabled={!canSearch || searching}>{searching ? "กำลังค้นหา..." : "ค้นหา"}</Button>
           </div>
 
-          {actionType === "RETURN" ? (
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">ปลายทาง (สาขา)</label>
-              <select
-                className="w-full rounded-xl border-gray-300"
-                value={toBranchId || ""}
-                onChange={(e) => setToBranchId(Number(e.target.value) || null)}
-                disabled={loadingMeta}
-              >
-                <option value="">{loadingMeta ? "กำลังโหลด..." : "- เลือกสาขา -"}</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <Table.Root>
+              <Table.Head>
+                <Table.Tr>
+                  <Table.Th className="w-[140px]">Barcode</Table.Th>
+                  <Table.Th>ชื่อสินค้า{lineMode === "CATEGORY" ? " / หมวด" : ""}</Table.Th>
+                  <Table.Th className="w-[120px] text-right">ราคา</Table.Th>
+                  <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
+                </Table.Tr>
+              </Table.Head>
+              <Table.Body loading={searching}>
+                {results.map((it) => (
+                  <Table.Tr key={`${it.id}-${it.__cat?.id || "item"}`}>
+                    <Table.Td className="font-mono">{it.barcode || "-"}</Table.Td>
+                    <Table.Td>
+                      <div className="flex flex-col">
+                        <span>{it.name}</span>
+                        {it.__cat && <span className="text-xs text-slate-500">[{it.__cat.code || "-"}] {it.__cat.name}</span>}
+                      </div>
+                    </Table.Td>
+                    <Table.Td className="text-right">{money(it.salePrice ?? it.unitPrice ?? 0)}</Table.Td>
+                    <Table.Td className="text-right">
+                      <Button kind="success" size="sm" onClick={() => addLine(it)} leftIcon={<Plus size={14} />}>เพิ่ม</Button>
+                    </Table.Td>
+                  </Table.Tr>
                 ))}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">ปลายทาง (ร้านฝากขาย)</label>
-              <select
-                className="w-full rounded-xl border-gray-300"
-                value={toPartnerId || ""}
-                onChange={(e) => setToPartnerId(Number(e.target.value) || null)}
-                disabled={loadingMeta}
-              >
-                <option value="">{loadingMeta ? "กำลังโหลด..." : "- เลือกร้านฝากขาย -"}</option>
-                {partners.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">ยอดโดยประมาณ</label>
-            <div className="h-[38px] flex items-center px-3 rounded-xl border border-gray-200 bg-gray-50">
-              <b>{fmtMoney(approxTotal)}</b>
-            </div>
+                {!searching && results.length === 0 && (
+                  <Table.Tr><Table.Td colSpan={4} className="text-center text-slate-500 py-6">ไม่มีผลลัพธ์</Table.Td></Table.Tr>
+                )}
+              </Table.Body>
+            </Table.Root>
           </div>
-        </div>
-      </GradientPanel>
+        </GradientPanel>
 
-      <GradientPanel title="เพิ่มสินค้าเข้ารายการ">
-        <div className="flex gap-2">
-          <input
-            className="flex-1 rounded-xl border-gray-300"
-            placeholder="พิมพ์ชื่อ/สแกนบาร์โค้ด แล้วกด Enter"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button className="px-4 rounded-xl bg-gray-100 hover:bg-gray-200" onClick={doSearch}>ค้นหา</button>
-        </div>
-
-        {!!searchResults.length && (
-          <div className="mt-3 rounded-2xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left w-40">Barcode</th>
-                  <th className="px-3 py-2 text-left">สินค้า</th>
-                  <th className="px-3 py-2 text-right w-28">ราคาขาย</th>
-                  <th className="px-3 py-2 text-right w-20">เพิ่ม</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchResults.map((p) => (
-                  <tr key={p.id} className="border-t border-gray-100">
-                    <td className="px-3 py-2 font-mono text-gray-600">{p.barcode || "-"}</td>
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className="px-3 py-2 text-right">{fmtMoney(p.salePrice ?? p.price ?? 0)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
-                        onClick={() => addLine(p, 1)}
-                      >
-                        + เพิ่ม
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </GradientPanel>
-
-      <GradientPanel title="รายการสินค้า">
-        <div className="rounded-2xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left w-40">Barcode</th>
-                <th className="px-3 py-2 text-left">สินค้า</th>
-                <th className="px-3 py-2 text-right w-24">จำนวน</th>
-                <th className="px-3 py-2 text-right w-28">ราคาโดยประมาณ</th>
-                <th className="px-3 py-2 text-right w-28">รวม</th>
-                <th className="px-3 py-2 text-right w-20">ลบ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((it) => {
-                const price = Number(it.salePrice ?? it.price ?? 0);
-                const qty = Number(it.qty || 0);
-                const sum = price * qty;
-                return (
-                  <tr key={it.productId} className="border-t border-gray-100">
-                    <td className="px-3 py-2 font-mono text-gray-600">{it.barcode || "-"}</td>
-                    <td className="px-3 py-2">{it.name || "-"}</td>
-                    <td className="px-3 py-2 text-right">
+        {/* STEP 3 */}
+        <GradientPanel
+          title="3) รายการสินค้าที่จะส่ง / คืน"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button kind="danger" onClick={clearLines}>ล้างรายการ</Button>
+              <Button kind="success" onClick={saveDocument} disabled={saving || !lines.length}>{saving ? "กำลังบันทึก..." : "บันทึกเอกสารส่งของ"}</Button>
+            </div>
+          }
+        >
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <Table.Root>
+              <Table.Head>
+                <Table.Tr>
+                  <Table.Th className="w-[140px]">Barcode</Table.Th>
+                  <Table.Th>สินค้า</Table.Th>
+                  <Table.Th className="w-[120px] text-right">ราคา/หน่วย</Table.Th>
+                  <Table.Th className="w-[160px] text-right">จำนวน</Table.Th>
+                  <Table.Th className="w-[120px] text-right">รวม</Table.Th>
+                  <Table.Th className="w-[120px] text-right">เครื่องมือ</Table.Th>
+                </Table.Tr>
+              </Table.Head>
+              <Table.Body>
+                {lines.map((l) => (
+                  <Table.Tr key={l.productId}>
+                    <Table.Td className="font-mono">{l.barcode || "-"}</Table.Td>
+                    <Table.Td>
+                      <div className="flex flex-col">
+                        <span>{l.displayName || l.name}</span>
+                        {l.categoryId && <span className="text-xs text-slate-500">[CAT #{l.categoryId}]</span>}
+                      </div>
+                    </Table.Td>
+                    <Table.Td className="text-right">{money(l.unitPrice)}</Table.Td>
+                    <Table.Td className="text-right">
                       <input
                         type="number"
-                        min="1"
-                        className="w-20 text-right rounded-lg border-gray-300"
-                        value={qty}
-                        onChange={(e) => updateQty(it.productId, e.target.value)}
+                        min={1}
+                        className="w-[120px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-right"
+                        value={l.qty}
+                        onChange={(e) => updateQty(l.productId, e.target.value)}
                       />
-                    </td>
-                    <td className="px-3 py-2 text-right">{fmtMoney(price)}</td>
-                    <td className="px-3 py-2 text-right">{fmtMoney(sum)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white"
-                        onClick={() => removeLine(it.productId)}
-                      >
-                        ลบ
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!lines.length && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-gray-400">
-                    ยังไม่มีสินค้าในรายการ
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {!!lines.length && (
-              <tfoot>
-                <tr className="border-t-2 border-gray-200">
-                  <td colSpan={4} className="px-3 py-2 text-right"><b>รวมทั้งสิ้น</b></td>
-                  <td className="px-3 py-2 text-right font-bold">{fmtMoney(approxTotal)}</td>
-                  <td />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+                    </Table.Td>
+                    <Table.Td className="text-right">{money(l.unitPrice * l.qty)}</Table.Td>
+                    <Table.Td className="text-right">
+                      <Button kind="danger" size="sm" leftIcon={<Trash2 size={14} />} onClick={() => removeLine(l.productId)}>ลบ</Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {lines.length === 0 && (
+                  <Table.Tr><Table.Td colSpan={6} className="text-center text-slate-500 py-6">ยังไม่มีสินค้าในรายการ</Table.Td></Table.Tr>
+                )}
+              </Table.Body>
+            </Table.Root>
+          </div>
 
-        <div className="mt-3 flex justify-between">
-          <button
-            className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700"
-            onClick={() => setOpenClear(true)}
-          >
-            ล้างรายการ
-          </button>
+          {createdDoc && (
+            <div className="mt-4 rounded-xl border border-slate-200 p-3">
+              <div className="text-sm font-medium text-slate-600 mb-2">เอกสารที่เพิ่งบันทึก</div>
+              <PrintDoc
+                doc={{
+                  header: {
+                    docType: DOC_TYPES.DELIVERY_CONSIGNMENT,
+                    docNo: createdDoc.docNo || createdDoc.no || "DLV-CN-XXXX",
+                    docDate: createdDoc.docDate || createdDoc.date || new Date().toISOString().slice(0, 10),
+                    title: actionType === "RETURN" ? "RETURN" : "DELIVERY",
+                  },
+                  issuer: createdDoc.issuer,
+                  recipient: createdDoc.recipient,
+                  lines: createdDoc.items || createdDoc.lines,
+                  money: createdDoc.money || { grand: createdDoc.total },
+                  payment: createdDoc.payment,
+                }}
+              />
+            </div>
+          )}
+        </GradientPanel>
 
-          <button
-            className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
-            disabled={saving || !lines.length}
-            onClick={() => setOpenSave(true)}
-          >
-            {saving ? "กำลังบันทึก..." : "บันทึกเอกสารส่งของ"}
-          </button>
-        </div>
-      </GradientPanel>
+        {/* STEP 4 */}
+        <GradientPanel
+          title="4) รายการใบส่งสินค้า"
+          subtitle="ค้นหาย้อนหลังและพิมพ์เอกสารได้"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button kind="white" leftIcon={<RefreshCcw size={16} />} onClick={loadDocs}>รีเฟรช</Button>
+              <div className="flex items-center gap-2">
+                <Search size={16} className="text-white/80" />
+                <input className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900" placeholder="ค้นหาเลขที่/คู่ค้า/สาขา" value={docQ} onChange={(e) => setDocQ(e.target.value)} />
+              </div>
+            </div>
+          }
+        >
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <Table.Root>
+              <Table.Head>
+                <Table.Tr>
+                  <Table.Th className="w-[160px]">เลขที่เอกสาร</Table.Th>
+                  <Table.Th className="w-[120px]">วันที่</Table.Th>
+                  <Table.Th>ผู้รับ/ร้านฝากขาย</Table.Th>
+                  <Table.Th className="w-[140px] text-right">ยอดสุทธิ</Table.Th>
+                  <Table.Th className="w-[160px] text-right">เครื่องมือ</Table.Th>
+                </Table.Tr>
+              </Table.Head>
+              <Table.Body loading={docsLoading}>
+                {docs.map((d) => (
+                  <Table.Tr key={d.id}>
+                    <Table.Td className="font-mono">{d.docNo || d.no}</Table.Td>
+                    <Table.Td>{(d.docDate || d.date || "").slice(0, 10)}</Table.Td>
+                    <Table.Td>{d.recipient?.name || d.partnerName || "-"}</Table.Td>
+                    <Table.Td className="text-right">{money(d.money?.grand || d.total || 0)}</Table.Td>
+                    <Table.Td className="text-right">
+                      <div className="inline-flex gap-2">
+                        <Button size="sm" kind="white" leftIcon={<Printer size={14} />} onClick={() => window.open(`/api/deliveries/consignment/${d.id}/print`, "_blank")}>พิมพ์</Button>
+                        <Button size="sm" kind="white" leftIcon={<Download size={14} />} onClick={() => window.open(`/api/deliveries/consignment/${d.id}/print?format=pdf`, "_blank")}>PDF</Button>
+                      </div>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {!docsLoading && docs.length === 0 && (
+                  <Table.Tr><Table.Td colSpan={5} className="text-center text-slate-500 py-6">ไม่พบเอกสาร</Table.Td></Table.Tr>
+                )}
+              </Table.Body>
+            </Table.Root>
+          </div>
+        </GradientPanel>
+      </div>
 
-      {/* Modals */}
-      <ConfirmClearModal
-        open={openClear}
-        onClose={() => setOpenClear(false)}
-        onConfirm={clearLines}
-      />
-      <ConfirmSaveModal
-        open={openSave}
-        onClose={() => setOpenSave(false)}
-        onConfirm={saveDocument}
-        actionType={actionType}
-        fromBranchName={fromBranchId ? (branches.find((b) => b.id === fromBranchId)?.name) : ""}
-        toBranchName={toBranchId ? (branches.find((b) => b.id === toBranchId)?.name) : ""}
-        toPartnerName={toPartnerId ? (partners.find((p) => p.id === toPartnerId)?.name) : ""}
-        lines={lines}
-      />
+      <BarcodeScannerModal open={openScanner} onClose={() => setOpenScanner(false)} onDetected={onScanDetected} />
+
+      <GlassModal open={false} title="สรุปการทำงานของหน้า" onClose={() => {}}>
+        <ul className="list-disc pl-5 space-y-1 text-slate-700">
+          <li>ADMIN เลือกต้นทาง-ปลายทางได้อิสระ, CONSIGN ทำได้เฉพาะ RETURN (สาขาตัวเอง → สาขาหลัก)</li>
+          <li>โหมด ITEM: ค้นหาสินค้าปกติ (ชื่อ/บาร์โค้ด)</li>
+          <li>โหมด CATEGORY: ค้นหาหมวดของร้านฝากขาย แล้วเลือกสินค้าที่อยู่ในหมวดนั้น</li>
+          <li>เพิ่มสินค้าเข้ารายการ, กำหนดจำนวน, บันทึกเอกสาร</li>
+          <li>ดู/ค้นหาเอกสารย้อนหลังและพิมพ์ได้</li>
+        </ul>
+      </GlassModal>
     </div>
   );
 }
