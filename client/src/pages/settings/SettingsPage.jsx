@@ -3,6 +3,7 @@ import GradientPanel from "@/components/theme/GradientPanel.jsx";
 import { Settings, Users, Building2 } from "lucide-react";
 import UsersSettingsTab from "./tabs/UsersSettingsTab.jsx";
 import HeadquartersSettingsTab from "./tabs/HeadquartersSettingsTab.jsx";
+import TableTemplatesTab from "./tabs/TableTemplatesTab.jsx"; // ✅ เพิ่ม import
 
 const TABS = [
   { key: "users", label: "ตั้งค่า User", icon: Users },

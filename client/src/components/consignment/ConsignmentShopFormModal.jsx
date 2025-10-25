@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import GlassModal from "@/components/theme/GlassModal.jsx";
 import Button from "@/components/ui/Button.jsx";
+import api from "@/lib/axios";
+import TemplatePicker from "@/components/docs/TemplatePicker"; // << ใช้ตัวเลือกเทมเพลตที่เราทำไว้
+import { getPartnerDocPrefs } from "@/services/templates.service"; // << อ่านค่าเดิมตอนแก้ไข
 
 export default function ConsignmentShopFormModal({
   open,
   mode = "create", // "create" | "edit"
   initial = null,
   onClose,
-  onSubmit,
+  onSubmit,        // จะถูกเรียกเป็น onSubmit(payload, docPrefsItems)
   busy = false,
 }) {
   const isEdit = mode === "edit";
   const formId = "consignment-partner-form";
 
+  // ---------- ฟอร์มข้อมูลร้าน ----------
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [statusSelect, setStatusSelect] = useState("ACTIVE");
@@ -26,8 +30,31 @@ export default function ConsignmentShopFormModal({
   const [lineMode, setLineMode] = useState("ITEM");
   const [partnerLogoUrl, setPartnerLogoUrl] = useState("");
 
+  // ---------- สำหรับเทมเพลตเอกสาร ----------
+  const [hq, setHq] = useState(null);
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  // ค่าเลือกต่อ DocKind
+  const [prefDelivery, setPrefDelivery] = useState({ headerTemplateId: null, tableTemplateId: null });
+  const [prefInvoice,  setPrefInvoice]  = useState({ headerTemplateId: null, tableTemplateId: null });
+  const [prefReceipt,  setPrefReceipt]  = useState({ headerTemplateId: null, tableTemplateId: null });
+
+  // โหลด HQ active เพื่อนำ hq.id ไปดึงรายการเทมเพลตใน TemplatePicker
   useEffect(() => {
     if (!open) return;
+    (async () => {
+      try {
+        const { data } = await api.get("/api/headquarters/active");
+        setHq(data ?? null);
+      } catch {
+        setHq(null);
+      }
+    })();
+  }, [open]);
+
+  // รีเฟรชค่าเริ่มต้นของฟอร์ม
+  useEffect(() => {
+    if (!open) return;
+
     if (initial && isEdit) {
       setCode(initial.code ?? "");
       setName(initial.name ?? "");
@@ -46,8 +73,39 @@ export default function ConsignmentShopFormModal({
       setPhone(""); setTaxId(""); setCommissionRate("");
       setAddressLine1(""); setAddressLine2(""); setAddressLine3("");
       setAmountInWordsLang("TH"); setLineMode("ITEM"); setPartnerLogoUrl("");
+      // reset prefs ด้วย
+      setPrefDelivery({ headerTemplateId: null, tableTemplateId: null });
+      setPrefInvoice({ headerTemplateId: null, tableTemplateId: null });
+      setPrefReceipt({ headerTemplateId: null, tableTemplateId: null });
     }
   }, [open, isEdit, initial]);
+
+  // ถ้าเป็นโหมดแก้ไข → โหลดค่า doc-prefs เดิมของร้าน
+  useEffect(() => {
+    if (!open || !isEdit || !initial?.id) return;
+    (async () => {
+      setPrefsLoading(true);
+      try {
+        const res = await getPartnerDocPrefs(initial.id).catch(() => ({ items: [] }));
+        const items = res?.items || [];
+        const byKind = (k) => items.find((x) => x.docKind === k) || {};
+        setPrefDelivery({
+          headerTemplateId: byKind("DELIVERY").headerTemplateId ?? null,
+          tableTemplateId:  byKind("DELIVERY").tableTemplateId  ?? null,
+        });
+        setPrefInvoice({
+          headerTemplateId: byKind("INVOICE").headerTemplateId ?? null,
+          tableTemplateId:  byKind("INVOICE").tableTemplateId  ?? null,
+        });
+        setPrefReceipt({
+          headerTemplateId: byKind("RECEIPT").headerTemplateId ?? null,
+          tableTemplateId:  byKind("RECEIPT").tableTemplateId  ?? null,
+        });
+      } finally {
+        setPrefsLoading(false);
+      }
+    })();
+  }, [open, isEdit, initial?.id]);
 
   const canSave = useMemo(() => code.trim() && name.trim(), [code, name]);
 
@@ -77,7 +135,14 @@ export default function ConsignmentShopFormModal({
       partnerLogoUrl: partnerLogoUrl.trim() || null,
     };
 
-    onSubmit?.(payload);
+    // รวม doc prefs เป็น items สำหรับ API PUT /doc-prefs
+    const docPrefsItems = [
+      { docKind: "DELIVERY", headerTemplateId: prefDelivery.headerTemplateId ?? null, tableTemplateId: prefDelivery.tableTemplateId ?? null },
+      { docKind: "INVOICE",  headerTemplateId: prefInvoice.headerTemplateId  ?? null, tableTemplateId: prefInvoice.tableTemplateId  ?? null },
+      { docKind: "RECEIPT",  headerTemplateId: prefReceipt.headerTemplateId  ?? null, tableTemplateId: prefReceipt.tableTemplateId  ?? null },
+    ];
+
+    onSubmit?.(payload, docPrefsItems);
   }
 
   const triggerSubmit = () => {
@@ -108,6 +173,8 @@ export default function ConsignmentShopFormModal({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="grid gap-3">
+
+        {/* ====== ข้อมูลร้านพื้นฐาน ====== */}
         <div className="grid md:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm text-slate-600 mb-1">รหัส (code)</label>
@@ -192,6 +259,35 @@ export default function ConsignmentShopFormModal({
         <div>
           <label className="block text-sm text-slate-600 mb-1">โลโก้ร้าน (URL)</label>
           <input className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 outline-none" value={partnerLogoUrl} onChange={(e) => setPartnerLogoUrl(e.target.value)} placeholder="https://..." />
+        </div>
+
+        {/* ====== ตั้งค่ารูปแบบเอกสารของร้านนี้ ====== */}
+        <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+          <div className="font-medium text-slate-700 mb-2">ตั้งค่ารูปแบบเอกสารของร้านนี้</div>
+          <div className="grid gap-3">
+            <TemplatePicker
+              hqId={hq?.id}
+              docKind="DELIVERY"
+              value={prefDelivery}
+              onChange={setPrefDelivery}
+              className="bg-white/70 rounded-xl p-2"
+            />
+            <TemplatePicker
+              hqId={hq?.id}
+              docKind="INVOICE"
+              value={prefInvoice}
+              onChange={setPrefInvoice}
+              className="bg-white/70 rounded-xl p-2"
+            />
+            <TemplatePicker
+              hqId={hq?.id}
+              docKind="RECEIPT"
+              value={prefReceipt}
+              onChange={setPrefReceipt}
+              className="bg-white/70 rounded-xl p-2"
+            />
+            {prefsLoading && <div className="text-xs text-slate-500">กำลังโหลดค่าตั้งต้นของร้าน…</div>}
+          </div>
         </div>
       </form>
     </GlassModal>

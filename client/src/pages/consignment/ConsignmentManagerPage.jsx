@@ -1,27 +1,41 @@
 // client/src/pages/consignment/ConsignmentManagerPage.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
-import api from "@/lib/axios";
-import Card from "@/components/ui/Card";
-import Table from "@/components/ui/Table";
-import Button from "@/components/ui/Button";
-import { Search, Plus, Pencil, ChevronRight, ScanLine } from "lucide-react";
-import ConsignmentShopFormModal from "@/components/consignment/ConsignmentShopFormModal";
-import ConsignmentCategoryModal from "@/components/consignment/ConsignmentCategoryModal";
-import ConsignmentCategoryMappingModal from "@/components/consignment/ConsignmentCategoryMappingModal";
-import ConsignmentPriceEditModal from "@/components/consignment/ConsignmentPriceEditModal";
-import BarcodeScannerModal from "@/components/BarcodeScannerModal";
-import { useAuthStore } from "@/store/authStore";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import api from '@/lib/axios';
+import Card from '@/components/ui/Card';
+import Table from '@/components/ui/Table';
+import Button from '@/components/ui/Button';
+import { Search, Plus, Pencil, ChevronRight, ScanLine } from 'lucide-react';
+import ConsignmentShopFormModal from '@/components/consignment/ConsignmentShopFormModal';
+import ConsignmentCategoryModal from '@/components/consignment/ConsignmentCategoryModal';
+import ConsignmentCategoryMappingModal from '@/components/consignment/ConsignmentCategoryMappingModal';
+import ConsignmentPriceEditModal from '@/components/consignment/ConsignmentPriceEditModal';
+import BarcodeScannerModal from '@/components/BarcodeScannerModal';
+import { useAuthStore } from '@/store/authStore';
+import PartnerDocPrefsPanel from '@/components/consignment/PartnerDocPrefsPanel';
 
 const money = (v) =>
-  new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB" }).format(Number(v || 0));
+  new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(Number(v || 0));
 
 export default function ConsignmentManagerPage() {
   const role = useAuthStore((s) => s.user?.role);
-  const isAdmin = String(role || "").toUpperCase() === "ADMIN";
+  const isAdmin = String(role || '').toUpperCase() === 'ADMIN';
+
+  // --------- HQ (for doc templates) ----------
+  const [hq, setHq] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/api/headquarters/active');
+        setHq(data ?? null);
+      } catch {
+        setHq(null);
+      }
+    })();
+  }, []);
 
   // --------- TOP: SHOPS ----------
   const [shops, setShops] = useState([]);
-  const [shopQ, setShopQ] = useState("");
+  const [shopQ, setShopQ] = useState('');
   const [selectedShopId, setSelectedShopId] = useState(null);
   const [openShopModal, setOpenShopModal] = useState(false);
   const [editShop, setEditShop] = useState(null);
@@ -30,7 +44,7 @@ export default function ConsignmentManagerPage() {
   async function loadShops() {
     setLoadingShops(true);
     try {
-      const { data } = await api.get("/api/consignment/partners", {
+      const { data } = await api.get('/api/consignment/partners', {
         params: { q: shopQ, page: 1, pageSize: 100 },
       });
       const items = data?.items || [];
@@ -40,7 +54,9 @@ export default function ConsignmentManagerPage() {
       setLoadingShops(false);
     }
   }
-  useEffect(() => { loadShops(); }, []);
+  useEffect(() => {
+    loadShops();
+  }, []);
   useEffect(() => {
     const t = setTimeout(loadShops, 300);
     return () => clearTimeout(t);
@@ -48,10 +64,10 @@ export default function ConsignmentManagerPage() {
 
   // --------- MIDDLE: CATEGORIES (of selected shop) ----------
   const [cats, setCats] = useState([]);
-  const [catQ, setCatQ] = useState("");
+  const [catQ, setCatQ] = useState('');
   const [loadingCats, setLoadingCats] = useState(false);
   const [openCatModal, setOpenCatModal] = useState(false);
-  const [catMode, setCatMode] = useState("create");
+  const [catMode, setCatMode] = useState('create');
   const [editingCat, setEditingCat] = useState(null);
 
   async function loadCats(shopId) {
@@ -66,17 +82,21 @@ export default function ConsignmentManagerPage() {
       setCats(base);
 
       // ถ้า backend ไม่ได้ให้ itemCount มา → ดึง total ต่อหมวดแบบรวดเร็ว (pageSize=1)
-      const needFetch = base.filter((c) => !Number.isFinite(Number(c.itemCount)) || Number(c.itemCount) === 0);
+      const needFetch = base.filter(
+        (c) => !Number.isFinite(Number(c.itemCount)) || Number(c.itemCount) === 0
+      );
       if (needFetch.length > 0) {
         const results = await Promise.allSettled(
           needFetch.map((c) =>
-            api.get(`/api/consignment/categories/${c.id}/products`, { params: { page: 1, pageSize: 1 } })
+            api.get(`/api/consignment/categories/${c.id}/products`, {
+              params: { page: 1, pageSize: 1 },
+            })
           )
         );
         const totalsById = new Map();
         results.forEach((r, idx) => {
           const catId = needFetch[idx].id;
-          if (r.status === "fulfilled") {
+          if (r.status === 'fulfilled') {
             const total = Number(r.value?.data?.total ?? 0);
             totalsById.set(catId, total);
           } else {
@@ -91,7 +111,9 @@ export default function ConsignmentManagerPage() {
       setLoadingCats(false);
     }
   }
-  useEffect(() => { loadCats(selectedShopId); }, [selectedShopId]);
+  useEffect(() => {
+    loadCats(selectedShopId);
+  }, [selectedShopId]);
   useEffect(() => {
     const t = setTimeout(() => loadCats(selectedShopId), 300);
     return () => clearTimeout(t);
@@ -104,7 +126,10 @@ export default function ConsignmentManagerPage() {
   const bottomSelectRef = useRef(null);
 
   async function loadMapped(categoryId) {
-    if (!categoryId) { setMapped([]); return; }
+    if (!categoryId) {
+      setMapped([]);
+      return;
+    }
     setMappedLoading(true);
     try {
       const { data } = await api.get(`/api/consignment/categories/${categoryId}/products`, {
@@ -115,7 +140,9 @@ export default function ConsignmentManagerPage() {
       setMappedLoading(false);
     }
   }
-  useEffect(() => { loadMapped(selectedCat?.id); }, [selectedCat]);
+  useEffect(() => {
+    loadMapped(selectedCat?.id);
+  }, [selectedCat]);
 
   // --------- Mapping modal / scan ----------
   const [openMapModal, setOpenMapModal] = useState(false);
@@ -131,13 +158,28 @@ export default function ConsignmentManagerPage() {
   }
 
   // shop handlers
-  function openCreateShop() { setEditShop(null); setOpenShopModal(true); }
-  function openEditShop(shop) { if (!isAdmin) return; setEditShop(shop); setOpenShopModal(true); }
+  function openCreateShop() {
+    setEditShop(null);
+    setOpenShopModal(true);
+  }
+  function openEditShop(shop) {
+    if (!isAdmin) return;
+    setEditShop(shop);
+    setOpenShopModal(true);
+  }
   const afterSavedShop = () => loadShops();
 
   // category handlers
-  function openCreateCategory() { setCatMode("create"); setEditingCat(null); setOpenCatModal(true); }
-  function openEditCategory(cat) { setCatMode("edit"); setEditingCat(cat); setOpenCatModal(true); }
+  function openCreateCategory() {
+    setCatMode('create');
+    setEditingCat(null);
+    setOpenCatModal(true);
+  }
+  function openEditCategory(cat) {
+    setCatMode('edit');
+    setEditingCat(cat);
+    setOpenCatModal(true);
+  }
   const afterSavedCategory = () => loadCats(selectedShopId);
 
   const selectedShop = useMemo(
@@ -149,7 +191,9 @@ export default function ConsignmentManagerPage() {
     if (!selectedCat) {
       const sel = bottomSelectRef.current;
       sel?.focus();
-      document.getElementById("bottom-products-panel")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById('bottom-products-panel')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     setOpenMapModal(true);
@@ -157,9 +201,8 @@ export default function ConsignmentManagerPage() {
 
   return (
     <div className="min-h-[calc(100vh-140px)] w-full">
-      <div className="w-full rounded-2xl p-4 sm:p-6 md:p-8" style={{ background: "#f4f7ff" }}>
+      <div className="w-full rounded-2xl p-4 sm:p-6 md:p-8" style={{ background: '#f4f7ff' }}>
         <div className="grid gap-6">
-
           {/* TOP: SHOP FILTER */}
           <Card className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3 items-center">
@@ -177,7 +220,7 @@ export default function ConsignmentManagerPage() {
                 <div className="flex items-center gap-2">
                   <select
                     className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
-                    value={selectedShopId || ""}
+                    value={selectedShopId || ''}
                     onChange={(e) => {
                       const id = Number(e.target.value) || null;
                       setSelectedShopId(id);
@@ -186,7 +229,8 @@ export default function ConsignmentManagerPage() {
                   >
                     {shops.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.code ? `[${s.code}] ` : ""}{s.name}
+                        {s.code ? `[${s.code}] ` : ''}
+                        {s.name}
                       </option>
                     ))}
                   </select>
@@ -211,15 +255,22 @@ export default function ConsignmentManagerPage() {
               </div>
 
               <div className="justify-self-end text-white/90 text-sm">
-                {loadingShops ? "กำลังโหลดร้าน..." : selectedShop ? (
+                {loadingShops ? (
+                  'กำลังโหลดร้าน...'
+                ) : selectedShop ? (
                   <div className="text-right">
                     <div className="opacity-90">ร้านที่เลือก</div>
                     <div className="font-semibold">
-                      {selectedShop.code ? `[${selectedShop.code}] ` : ""}{selectedShop.name}
-                      {selectedShop.isActive === false && <span className="ml-2 text-red-200">(INACTIVE)</span>}
+                      {selectedShop.code ? `[${selectedShop.code}] ` : ''}
+                      {selectedShop.name}
+                      {selectedShop.isActive === false && (
+                        <span className="ml-2 text-red-200">(INACTIVE)</span>
+                      )}
                     </div>
                   </div>
-                ) : "—"}
+                ) : (
+                  '—'
+                )}
               </div>
             </div>
           </Card>
@@ -257,11 +308,17 @@ export default function ConsignmentManagerPage() {
                 </Table.Head>
                 <Table.Body loading={loadingCats}>
                   {cats.map((c) => (
-                    <Table.Tr key={c.id} className="cursor-pointer" onClick={() => setSelectedCat(c)}>
-                      <Table.Td className="font-mono">{c.code || "-"}</Table.Td>
+                    <Table.Tr
+                      key={c.id}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedCat(c)}
+                    >
+                      <Table.Td className="font-mono">{c.code || '-'}</Table.Td>
                       <Table.Td className="flex items-center gap-2">
                         {c.name}
-                        {selectedCat?.id === c.id && <ChevronRight size={16} className="text-slate-400" />}
+                        {selectedCat?.id === c.id && (
+                          <ChevronRight size={16} className="text-slate-400" />
+                        )}
                       </Table.Td>
                       <Table.Td className="text-right">{Number(c.itemCount || 0)}</Table.Td>
                       <Table.Td className="text-right">
@@ -270,7 +327,10 @@ export default function ConsignmentManagerPage() {
                             <Button
                               kind="editor"
                               size="sm"
-                              onClick={(e) => { e.stopPropagation(); openEditCategory(c); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditCategory(c);
+                              }}
                               leftIcon={<Pencil size={14} />}
                             >
                               แก้ไข
@@ -281,7 +341,11 @@ export default function ConsignmentManagerPage() {
                     </Table.Tr>
                   ))}
                   {!loadingCats && cats.length === 0 && (
-                    <Table.Tr><Table.Td colSpan={4} className="text-center text-slate-500 py-6">ไม่พบหมวดหมู่</Table.Td></Table.Tr>
+                    <Table.Tr>
+                      <Table.Td colSpan={4} className="text-center text-slate-500 py-6">
+                        ไม่พบหมวดหมู่
+                      </Table.Td>
+                    </Table.Tr>
                   )}
                 </Table.Body>
               </Table.Root>
@@ -289,10 +353,13 @@ export default function ConsignmentManagerPage() {
           </Card>
 
           {/* BOTTOM: PRODUCTS IN CATEGORY */}
-          <Card id="bottom-products-panel" className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md">
+          <Card
+            id="bottom-products-panel"
+            className="p-5 bg-gradient-to-b from-[#9db9ff] to-[#6f86ff] text-white shadow-md"
+          >
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
               <div className="font-semibold">
-                สินค้าในหมวด {selectedCat ? `"${selectedCat.name}"` : "(ยังไม่เลือกหมวด)"}
+                สินค้าในหมวด {selectedCat ? `"${selectedCat.name}"` : '(ยังไม่เลือกหมวด)'}
               </div>
 
               <div className="flex items-center gap-2">
@@ -300,7 +367,7 @@ export default function ConsignmentManagerPage() {
                 <select
                   ref={bottomSelectRef}
                   className="rounded-xl border border-white/40 bg-white/95 px-3 py-2 outline-none text-slate-900"
-                  value={selectedCat?.id || ""}
+                  value={selectedCat?.id || ''}
                   onChange={(e) => {
                     const id = Number(e.target.value) || null;
                     const found = cats.find((c) => c.id === id) || null;
@@ -310,19 +377,30 @@ export default function ConsignmentManagerPage() {
                   <option value="">— เลือกหมวดหมู่สินค้า —</option>
                   {cats.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.code ? `[${c.code}] ` : ""}{c.name}
+                      {c.code ? `[${c.code}] ` : ''}
+                      {c.name}
                     </option>
                   ))}
                 </select>
 
-                <Button kind="white" onClick={() => setOpenScan(true)} leftIcon={<ScanLine size={16} />}>สแกนเพื่อค้นหา</Button>
-                <Button kind="success" onClick={handleAddClick}>เพิ่มสินค้าเข้าหมวด</Button>
+                <Button
+                  kind="white"
+                  onClick={() => setOpenScan(true)}
+                  leftIcon={<ScanLine size={16} />}
+                >
+                  สแกนเพื่อค้นหา
+                </Button>
+                <Button kind="success" onClick={handleAddClick}>
+                  เพิ่มสินค้าเข้าหมวด
+                </Button>
               </div>
             </div>
 
             <div className="rounded-2xl bg-white/95 p-3 text-slate-800 overflow-hidden">
               {!selectedCat ? (
-                <div className="text-slate-600 py-8 text-center">เลือกหมวดหมู่สินค้า เพื่อแสดงข้อมูลสินค้าในหมวดหมู่</div>
+                <div className="text-slate-600 py-8 text-center">
+                  เลือกหมวดหมู่สินค้า เพื่อแสดงข้อมูลสินค้าในหมวดหมู่
+                </div>
               ) : (
                 <Table.Root>
                   <Table.Head>
@@ -335,8 +413,8 @@ export default function ConsignmentManagerPage() {
                   </Table.Head>
                   <Table.Body loading={mappedLoading}>
                     {mapped.map((it) => {
-                      const barcode = it?.product?.barcode || "-";
-                      const name = it?.product?.name || "-";
+                      const barcode = it?.product?.barcode || '-';
+                      const name = it?.product?.name || '-';
                       const displayPrice = it?.price ?? it?.product?.salePrice ?? 0;
                       return (
                         <Table.Tr key={it.productId}>
@@ -359,7 +437,11 @@ export default function ConsignmentManagerPage() {
                       );
                     })}
                     {!mappedLoading && mapped.length === 0 && (
-                      <Table.Tr><Table.Td colSpan={4} className="text-center text-slate-500 py-6">ยังไม่มีสินค้าในหมวดนี้</Table.Td></Table.Tr>
+                      <Table.Tr>
+                        <Table.Td colSpan={4} className="text-center text-slate-500 py-6">
+                          ยังไม่มีสินค้าในหมวดนี้
+                        </Table.Td>
+                      </Table.Tr>
                     )}
                   </Table.Body>
                 </Table.Root>
@@ -372,7 +454,7 @@ export default function ConsignmentManagerPage() {
       {/* ===== MODALS ===== */}
       <ConsignmentShopFormModal
         open={openShopModal}
-        mode={editShop ? "edit" : "create"}
+        mode={editShop ? 'edit' : 'create'}
         initial={editShop}
         onClose={() => setOpenShopModal(false)}
         onSubmit={async (payload) => {
@@ -394,7 +476,7 @@ export default function ConsignmentManagerPage() {
         onClose={() => setOpenCatModal(false)}
         onSubmit={async (payloadOrId, payloadMaybe) => {
           if (!selectedShopId) return;
-          if (catMode === "create") {
+          if (catMode === 'create') {
             const payload = payloadOrId;
             await api.post(`/api/consignment/partners/${selectedShopId}/categories`, payload);
           } else {
@@ -438,7 +520,7 @@ export default function ConsignmentManagerPage() {
           setOpenScan(false);
           if (!selectedCat) return;
           setOpenMapModal(true);
-          sessionStorage.setItem("consignment.mapping.initialQuery", code || "");
+          sessionStorage.setItem('consignment.mapping.initialQuery', code || '');
         }}
       />
     </div>
